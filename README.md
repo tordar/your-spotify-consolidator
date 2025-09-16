@@ -1,12 +1,12 @@
 # Your Spotify Consolidator 🧹🔄📊
 
-A scripting tool to fetch and consolidate Spotify top albums data from Your_Spotify API. This tool helps you collect your top 500 albums, by cleaning up duplicates and gives you a cleaned JSON document.
+A scripting tool to fetch and consolidate Spotify top albums data from [Your_Spotify](https://github.com/Yooooomi/your_spotify) API. This tool helps you collect your top 500 albums, by cleaning up duplicates and gives you a cleaned JSON document.
 
 ## Prerequisites
 
 - Node.js 18.0.0 or higher
 - npm or yarn package manager
-- YourSpotify instance running (see [YourSpotify](https://github.com/Yooooomi/your_spotify))
+- [Your_Spotify](https://github.com/Yooooomi/your_spotify) instance running)
 
 
 ## Installation

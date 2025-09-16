@@ -1,8 +1,9 @@
 #!/usr/bin/env tsx
 
-import https from 'https';
-import fs from 'fs';
-import dotenv from 'dotenv';
+import * as https from 'https';
+import * as fs from 'fs';
+import * as dotenv from 'dotenv';
+import * as cliProgress from 'cli-progress';
 
 // Load environment variables
 dotenv.config();
@@ -99,28 +100,38 @@ function buildUrl(offset: number): string {
 
 // Main function to fetch all albums
 async function fetchAllAlbums(): Promise<Results> {
-  console.log(`Starting to fetch albums from Spotify API...`);
-  console.log(`Total calls: ${TOTAL_CALLS}`);
-  console.log(`Batch size: ${BATCH_SIZE}`);
-  console.log(`Date range: ${START_DATE} to ${END_DATE}`);
+  console.log(`🎵 Starting to fetch albums from Spotify API...`);
+  console.log(`📊 Total calls: ${TOTAL_CALLS}`);
+  console.log(`📦 Batch size: ${BATCH_SIZE}`);
+  console.log(`📅 Date range: ${START_DATE} to ${END_DATE}`);
   console.log('---\n');
 
   const allAlbums: any[] = [];
   const errors: ErrorInfo[] = [];
 
+  // Create progress bar
+  const progressBar = new cliProgress.SingleBar({
+    format: '🎵 Fetching Albums |{bar}| {percentage}% | {value}/{total} calls | ETA: {eta}s | Albums: {albums}',
+    barCompleteChar: '\u2588',
+    barIncompleteChar: '\u2591',
+    hideCursor: true,
+    stopOnComplete: true
+  });
+
+  // Start progress bar
+  progressBar.start(TOTAL_CALLS, 0, {
+    albums: 0
+  });
+
   for (let i = 0; i < TOTAL_CALLS; i++) {
     const offset = i * BATCH_SIZE;
     const url = buildUrl(offset);
-    
-    console.log(`Call ${i + 1}/${TOTAL_CALLS} - Offset: ${offset}`);
-    console.log(`URL: ${url}`);
     
     try {
       const response = await makeRequest(url, COOKIE_TOKEN!);
       
       if (response.statusCode === 200) {
         const albums = response.data;
-        console.log(`✅ Success - Found ${albums.length} albums`);
         
         if (albums.length > 0) {
           // Transform the data to a cleaner format
@@ -140,11 +151,12 @@ async function fetchAllAlbums(): Promise<Results> {
           
           allAlbums.push(...cleanedAlbums);
         } else {
-          console.log('⚠️  No more albums found, stopping early');
+          // No more albums found, stop early
+          progressBar.stop();
+          console.log('\n⚠️  No more albums found, stopping early');
           break;
         }
       } else {
-        console.log(`❌ Error - Status: ${response.statusCode}`);
         errors.push({
           call: i + 1,
           offset,
@@ -154,7 +166,6 @@ async function fetchAllAlbums(): Promise<Results> {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.log(`❌ Error - ${errorMessage}`);
       errors.push({
         call: i + 1,
         offset,
@@ -162,23 +173,30 @@ async function fetchAllAlbums(): Promise<Results> {
       });
     }
     
+    // Update progress bar
+    progressBar.update(i + 1, {
+      albums: allAlbums.length
+    });
+    
     // Add a small delay between requests to be respectful to the API
     if (i < TOTAL_CALLS - 1) {
-      console.log('⏳ Waiting 1 second before next request...\n');
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
 
+  // Stop progress bar
+  progressBar.stop();
+
   // Summary
-  console.log('\n--- SUMMARY ---');
-  console.log(`Total albums collected: ${allAlbums.length}`);
-  console.log(`Successful calls: ${TOTAL_CALLS - errors.length}`);
-  console.log(`Failed calls: ${errors.length}`);
+  console.log('\n📊 --- SUMMARY ---');
+  console.log(`🎵 Total albums collected: ${allAlbums.length}`);
+  console.log(`✅ Successful calls: ${TOTAL_CALLS - errors.length}`);
+  console.log(`❌ Failed calls: ${errors.length}`);
   
   if (errors.length > 0) {
-    console.log('\nErrors:');
+    console.log('\n🚨 Errors encountered:');
     errors.forEach(error => {
-      console.log(`  Call ${error.call} (offset ${error.offset}): ${error.error}`);
+      console.log(`  📞 Call ${error.call} (offset ${error.offset}): ${error.error}`);
     });
   }
 
@@ -202,7 +220,7 @@ async function fetchAllAlbums(): Promise<Results> {
 
   const filename = `top-albums-${Date.now()}.json`;
   fs.writeFileSync(filename, JSON.stringify(results, null, 2));
-  console.log(`\n📁 Results saved to: ${filename}`);
+  console.log(`\n💾 Results saved to: ${filename}`);
 
   return results;
 }

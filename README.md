@@ -63,6 +63,23 @@ This will:
 - Save cleaned data to a new timestamped file
 - Display consolidation statistics
 
+## Example Output
+
+### Fetch Progress
+Watch the progress bar as it fetches the data:
+
+![Fetch Progress Animation](docs/fetch-summary.gif)
+
+### Consolidation Summary
+After running the clean, you'll see a summary like this:
+
+![Consolidation Summary](docs/consolidation-summary.png)
+
+- **Original albums**: Total albums fetched from the API
+- **Consolidated albums**: Final count of albums in the cleaned file
+- **Duplicates removed**: Number of duplicate entries found and removed from the cleaned file
+- **Consolidation rate**: Percentage of duplicates removed
+- **Top 500 Albums**: Ranked list of your most-played albums
 
 ## Configuration
 

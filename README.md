@@ -1,6 +1,6 @@
 # Your Spotify Consolidator 🧹🔄📊
 
-A scripting tool to fetch and consolidate Spotify top albums data from [Your_Spotify](https://github.com/Yooooomi/your_spotify) API. This tool helps you collect your top 500 albums, by cleaning up duplicates and gives you a cleaned JSON document.
+A scripting tool to fetch and consolidate Spotify top albums data from [Your_Spotify](https://github.com/Yooooomi/your_spotify) API. This tool helps you collect your top 500 albums, by cleaning up duplicates and gives you an easy to use JSON document.
 
 ## Prerequisites
 
@@ -71,7 +71,7 @@ Watch the progress bar as it fetches the data:
 ![Fetch Progress Animation](docs/fetch-summary.gif)
 
 ### Consolidation Summary
-After running the clean, you'll see a summary like this:
+After running the cleaner script, you'll see a summary like this, and receive a json file without duplicates:
 
 ![Consolidation Summary](docs/consolidation-summary.png)
 

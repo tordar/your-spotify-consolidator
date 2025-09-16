@@ -1,0 +1,33 @@
+{
+  "name": "your-spotify-consolidator",
+  "version": "1.0.0",
+  "description": "A tool to fetch and consolidate Spotify top albums data",
+  "main": "index.js",
+  "scripts": {
+    "fetch": "tsx fetch-top-albums.ts",
+    "clean": "tsx clean-top-albums.ts",
+    "build": "tsc",
+    "dev": "tsx --watch",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "spotify",
+    "music",
+    "data",
+    "consolidation",
+    "api"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

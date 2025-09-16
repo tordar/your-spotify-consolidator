@@ -1,10 +1,5 @@
 #!/usr/bin/env tsx
 
-/**
- * Script to fetch top albums from the external Spotify API
- * Makes the exact same request 25 times with increasing offsets
- */
-
 import https from 'https';
 import fs from 'fs';
 import dotenv from 'dotenv';
@@ -14,8 +9,8 @@ dotenv.config();
 
 // Configuration from environment variables
 const BASE_URL = process.env.SPOTIFY_API_URL || 'https://spotify-api.tordar.no/spotify/top/albums';
-const START_DATE = process.env.START_DATE || '2010-05-02T05:22:01.000Z';
-const END_DATE = process.env.END_DATE || '2025-09-16T12:33:53.259Z';
+const START_DATE = process.env.START_DATE || '2009-01-01T00:00:00.000Z';
+const END_DATE = process.env.END_DATE || '2025-12-12T00:00:00.000Z';
 const BATCH_SIZE = parseInt(process.env.BATCH_SIZE || '20');
 const TOTAL_CALLS = parseInt(process.env.TOTAL_CALLS || '50');
 const COOKIE_TOKEN = process.env.SPOTIFY_COOKIE_TOKEN;
@@ -121,7 +116,7 @@ async function fetchAllAlbums(): Promise<Results> {
     console.log(`URL: ${url}`);
     
     try {
-      const response = await makeRequest(url, COOKIE_TOKEN);
+      const response = await makeRequest(url, COOKIE_TOKEN!);
       
       if (response.statusCode === 200) {
         const albums = response.data;

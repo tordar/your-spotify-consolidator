@@ -4,8 +4,10 @@
   "description": "A tool to fetch and consolidate Spotify top albums data",
   "main": "index.js",
   "scripts": {
-    "fetch": "tsx fetch-top-albums.ts",
-    "clean": "tsx clean-top-albums.ts",
+    "fetch-albums": "tsx fetch-top-albums.ts",
+    "clean-albums": "tsx clean-top-albums.ts",
+    "fetch-songs": "tsx fetch-top-songs.ts",
+    "clean-songs": "tsx clean-top-songs.ts",
     "build": "tsc",
     "dev": "tsx --watch",
     "start": "node dist/index.js"

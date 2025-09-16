@@ -28,6 +28,7 @@ interface CleanedAlbum {
 interface ConsolidatedAlbum extends CleanedAlbum {
   consolidated_count: number;
   original_albumIds: string[];
+  rank?: number; // Optional since we add it after sorting
 }
 
 interface CleanResults {
@@ -96,7 +97,11 @@ function consolidateAlbums(albums: CleanedAlbum[]): CleanResults {
   
   const consolidatedAlbums = Array.from(consolidatedMap.values())
     .sort((a, b) => b.count - a.count) // Sort by count (highest first)
-    .slice(0, 500); // Keep only top 500 albums
+    .slice(0, 500) // Keep only top 500 albums
+    .map((album, index) => ({
+      ...album,
+      rank: index + 1 // Add rank (1-based indexing)
+    }));
   const consolidationRate = ((duplicatesRemoved / albums.length) * 100).toFixed(2);
   
   console.log(`\n--- CONSOLIDATION SUMMARY ---`);
@@ -107,8 +112,8 @@ function consolidateAlbums(albums: CleanedAlbum[]): CleanResults {
   
   // Log top 500 albums
   console.log(`\n--- TOP 500 ALBUMS ---`);
-  consolidatedAlbums.forEach((album, index) => {
-    console.log(`${index + 1}. ${album.artist.name} - "${album.album.name}" (${album.count} plays)`);
+  consolidatedAlbums.forEach((album) => {
+    console.log(`#${album.rank}. ${album.artist.name} - "${album.album.name}" (${album.count} plays)`);
   });
   
   return {

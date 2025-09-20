@@ -9,7 +9,7 @@ import * as cliProgress from 'cli-progress';
 dotenv.config();
 
 // Configuration from environment variables
-const BASE_URL = process.env.SPOTIFY_API_URL || 'https://spotify-api.tordar.no/spotify/top/albums';
+const BASE_URL = 'https://spotify-api.tordar.no/spotify/top/artists';
 const START_DATE = process.env.START_DATE || '2009-01-01T00:00:00.000Z';
 const END_DATE = process.env.END_DATE || '2025-12-12T00:00:00.000Z';
 const BATCH_SIZE = parseInt(process.env.BATCH_SIZE || '20');
@@ -43,12 +43,12 @@ interface Results {
       start: string;
       end: string;
     };
-    totalAlbums: number;
+    totalArtists: number;
     successfulCalls: number;
     failedCalls: number;
     timestamp: string;
   };
-  albums: any[];
+  artists: any[];
   errors: ErrorInfo[];
 }
 
@@ -98,22 +98,20 @@ function buildUrl(offset: number): string {
   return `${BASE_URL}?${params.toString()}`;
 }
 
-// Main function to fetch all albums
-async function fetchAllAlbums(): Promise<Results> {
-  console.log(`🎵 Starting to fetch albums from Spotify API...`);
+// Main function to fetch all artists
+async function fetchAllArtists(): Promise<Results> {
+  console.log(`🎤 Starting to fetch artists from Spotify API...`);
   console.log(`📊 Total calls: ${TOTAL_CALLS}`);
   console.log(`📦 Batch size: ${BATCH_SIZE}`);
   console.log(`📅 Date range: ${START_DATE} to ${END_DATE}`);
-  console.log(`🔗 Base URL: ${BASE_URL}`);
-  console.log(`🍪 Cookie token present: ${COOKIE_TOKEN ? 'Yes' : 'No'}`);
   console.log('---\n');
 
-  const allAlbums: any[] = [];
+  const allArtists: any[] = [];
   const errors: ErrorInfo[] = [];
 
   // Create progress bar
   const progressBar = new cliProgress.SingleBar({
-    format: '🎵 Fetching Albums |{bar}| {percentage}% | {value}/{total} calls | ETA: {eta}s | Albums: {albums}',
+    format: '🎤 Fetching Artists |{bar}| {percentage}% | {value}/{total} calls | ETA: {eta}s | Artists: {artists}',
     barCompleteChar: '\u2588',
     barIncompleteChar: '\u2591',
     hideCursor: true,
@@ -122,46 +120,41 @@ async function fetchAllAlbums(): Promise<Results> {
 
   // Start progress bar
   progressBar.start(TOTAL_CALLS, 0, {
-    albums: 0
+    artists: 0
   });
 
   for (let i = 0; i < TOTAL_CALLS; i++) {
     const offset = i * BATCH_SIZE;
     const url = buildUrl(offset);
     
-    // Debug: Log the first request
-    if (i === 0) {
-      console.log(`🔍 First request URL: ${url}`);
-      console.log(`🔍 Making first API call...`);
-    }
-    
     try {
       const response = await makeRequest(url, COOKIE_TOKEN!);
       
       if (response.statusCode === 200) {
-        const albums = response.data;
+        const artists = response.data;
         
-        if (albums.length > 0) {
-          // Transform the data to a cleaner format
-          const cleanedAlbums = albums.map((album: any) => ({
-            duration_ms: album.duration_ms,
-            count: album.count,
-            albumId: album.albumId,
-            album: {
-              name: album.album?.name || '',
-              images: album.album?.images || []
-            },
+        if (artists.length > 0) {
+          // Transform the data to a cleaner format based on the API response structure
+          const cleanedArtists = artists.map((artist: any) => ({
+            duration_ms: artist.duration_ms,
+            count: artist.count,
+            differents: artist.differents,
+            artistId: artist.id,
+            primaryArtistId: artist.primaryArtistId,
+            total_count: artist.total_count,
+            total_duration_ms: artist.total_duration_ms,
             artist: {
-              name: album.artist?.name || '',
-              genres: album.artist?.genres || []
+              name: artist.artist?.name || '',
+              genres: artist.artist?.genres || [],
+              images: artist.artist?.images || []
             }
           }));
           
-          allAlbums.push(...cleanedAlbums);
+          allArtists.push(...cleanedArtists);
         } else {
-          // No more albums found, stop early
+          // No more artists found, stop early
           progressBar.stop();
-          console.log('\n⚠️  No more albums found, stopping early');
+          console.log('\n⚠️  No more artists found, stopping early');
           break;
         }
       } else {
@@ -183,7 +176,7 @@ async function fetchAllAlbums(): Promise<Results> {
     
     // Update progress bar
     progressBar.update(i + 1, {
-      albums: allAlbums.length
+      artists: allArtists.length
     });
     
     // Add a small delay between requests to be respectful to the API
@@ -197,7 +190,7 @@ async function fetchAllAlbums(): Promise<Results> {
 
   // Summary
   console.log('\n📊 --- SUMMARY ---');
-  console.log(`🎵 Total albums collected: ${allAlbums.length}`);
+  console.log(`🎤 Total artists collected: ${allArtists.length}`);
   console.log(`✅ Successful calls: ${TOTAL_CALLS - errors.length}`);
   console.log(`❌ Failed calls: ${errors.length}`);
   
@@ -217,16 +210,16 @@ async function fetchAllAlbums(): Promise<Results> {
         start: START_DATE,
         end: END_DATE
       },
-      totalAlbums: allAlbums.length,
+      totalArtists: allArtists.length,
       successfulCalls: TOTAL_CALLS - errors.length,
       failedCalls: errors.length,
       timestamp: new Date().toISOString()
     },
-    albums: allAlbums,
+    artists: allArtists,
     errors: errors
   };
 
-  const filename = `top-albums-${Date.now()}.json`;
+  const filename = `top-artists-${Date.now()}.json`;
   fs.writeFileSync(filename, JSON.stringify(results, null, 2));
   console.log(`\n💾 Results saved to: ${filename}`);
 
@@ -235,7 +228,7 @@ async function fetchAllAlbums(): Promise<Results> {
 
 // Run the script
 if (require.main === module) {
-  fetchAllAlbums()
+  fetchAllArtists()
     .then(() => {
       console.log('\n🎉 Script completed successfully!');
       process.exit(0);
@@ -246,4 +239,4 @@ if (require.main === module) {
     });
 }
 
-export { fetchAllAlbums, buildUrl, makeRequest };
+export { fetchAllArtists, buildUrl, makeRequest };

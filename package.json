@@ -8,6 +8,9 @@
     "clean-albums": "tsx clean-top-albums.ts",
     "fetch-songs": "tsx fetch-top-songs.ts",
     "clean-songs": "tsx clean-top-songs.ts",
+    "fetch-artists": "tsx fetch-top-artists.ts",
+    "clean-artists": "tsx clean-top-artists.ts",
+    "artist-albums": "tsx artist-albums-summary.ts",
     "build": "tsc",
     "dev": "tsx --watch",
     "start": "node dist/index.js"

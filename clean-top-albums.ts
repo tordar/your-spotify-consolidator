@@ -28,6 +28,7 @@ interface CleanedAlbum {
 interface ConsolidatedAlbum extends CleanedAlbum {
   consolidated_count: number;
   original_albumIds: string[];
+  original_counts: number[]; // Track individual play counts for each original album
   rank?: number; // Optional since we add it after sorting
 }
 
@@ -58,11 +59,80 @@ function findLatestJsonFile(): string {
 function consolidateAlbums(albums: CleanedAlbum[]): CleanResults {
   console.log(`Starting consolidation of ${albums.length} albums...`);
   
+  // Define known album variations that should be consolidated
+  const albumVariations: Record<string, Record<string, string[]>> = {
+    'eddie vedder': {
+      'Into The Wild (Music For The Motion Picture)': ['into the wild (music for the motion picture)', 'music for the motion picture into the wild']
+    },
+    'the smashing pumpkins': {
+      'Mellon Collie and the Infinite Sadness': ['mellon collie and the infinite sadness (remastered)', 'mellon collie and the infinite sadness (deluxe edition)']
+    },
+    'joy division': {
+      'Unknown Pleasures': ['unknown pleasures (collector\'s edition)', 'unknown pleasures']
+    },
+    'joyce manor': {
+      'Joyce Manor': ['joyce manor', 's/t']
+    },
+    'david bowie': {
+      'Let\'s Dance': ['let\'s dance (2018 remaster)', 'let\'s dance (1999 remaster)']
+    },
+    'the tallest man on earth': {
+      'There\'s No Leaving Now': ['there\'s no leaving now', 'there´s no leaving now']
+    },
+    'oasis': {
+      '(What\'s The Story) Morning Glory?': ['(what\'s the story) morning glory? [remastered deluxe edition]', '(what\'s the story) morning glory? (deluxe remastered edition)'],
+      'Definitely Maybe': ['definitely maybe (deluxe edition remastered)', 'definitely maybe']
+    },
+    'tigers jaw': {
+      'Belongs To The Dead': ['belongs to the dead (remastered version)', 'belongs to the dead']
+    },
+    'kvelertak': {
+      'Kvelertak': ['kvelertak (deluxe edition)', 'kvelertak']
+    },
+    'fleetwood mac': {
+      'Rumours': ['rumours', 'rumours (super deluxe)']
+    },
+    'the velvet underground': {
+      'The Velvet Underground & Nico 45th Anniversary': ['the velvet underground & nico 45th anniversary', 'the velvet underground & nico 45th anniversary (super deluxe edition)']
+    },
+    'the rolling stones': {
+      'Exile On Main Street': ['exile on main street (deluxe version)', 'exile on main street (2010 re-mastered)']
+    },
+    'metallica': {
+      'Kill \'Em All': ['kill \'em all (remastered)', 'kill \'em all']
+    },
+    'ben howard': {
+      'Every Kingdom': ['every kingdom (deluxe version)', 'every kingdom']
+    },
+    'jokke med tourettes': {
+      'Billig Lykke': ['billig lykke', 'billig lykke (re-mastret)']
+    },
+    'upstrokes': {
+      'Gonna Get \'Em': ['gonna get \'em', 'gonna get\'em']
+    }
+  };
+  
+  // Function to normalize album name for specific variations only
+  function normalizeAlbumName(artistName: string, albumName: string): string {
+    const artistKey = artistName.toLowerCase();
+    const albumKey = albumName.toLowerCase();
+    
+    if (albumVariations[artistKey]) {
+      for (const [baseAlbum, variations] of Object.entries(albumVariations[artistKey])) {
+        if (variations.includes(albumKey)) {
+          return baseAlbum;
+        }
+      }
+    }
+    return albumName; // Return original name for non-variations
+  }
+  
   const consolidatedMap = new Map<string, ConsolidatedAlbum>();
   let duplicatesRemoved = 0;
   
   for (const album of albums) {
-    const key = `${album.artist.name}|||${album.album.name}`.toLowerCase();
+    const normalizedAlbumName = normalizeAlbumName(album.artist.name, album.album.name);
+    const key = `${album.artist.name}|||${normalizedAlbumName}`.toLowerCase();
     
     if (consolidatedMap.has(key)) {
       // Album already exists, consolidate the data
@@ -74,6 +144,7 @@ function consolidateAlbums(albums: CleanedAlbum[]): CleanResults {
       existing.duration_ms += album.duration_ms;
       existing.consolidated_count++;
       existing.original_albumIds.push(album.albumId);
+      existing.original_counts.push(album.count);
       
       // Keep the album with more images (better quality)
       if (album.album.images.length > existing.album.images.length) {
@@ -87,11 +158,17 @@ function consolidateAlbums(albums: CleanedAlbum[]): CleanResults {
       console.log(`🔄 Consolidated: "${album.artist.name}" - "${album.album.name}" (${existing.consolidated_count} duplicates)`);
     } else {
       // New album, add to map
-      consolidatedMap.set(key, {
+      const consolidatedAlbum = {
         ...album,
+        album: {
+          ...album.album,
+          name: normalizedAlbumName // Use normalized name for the consolidated album
+        },
         consolidated_count: 1,
-        original_albumIds: [album.albumId]
-      });
+        original_albumIds: [album.albumId],
+        original_counts: [album.count]
+      };
+      consolidatedMap.set(key, consolidatedAlbum);
     }
   }
   
@@ -104,17 +181,34 @@ function consolidateAlbums(albums: CleanedAlbum[]): CleanResults {
     }));
   const consolidationRate = ((duplicatesRemoved / albums.length) * 100).toFixed(2);
   
+  // Create consolidation summary table
   console.log(`\n--- CONSOLIDATION SUMMARY ---`);
-  console.log(`Original albums: ${albums.length}`);
-  console.log(`Consolidated albums: ${consolidatedAlbums.length}`);
-  console.log(`Duplicates removed: ${duplicatesRemoved}`);
-  console.log(`Consolidation rate: ${consolidationRate}%`);
+  console.log('┌─────────────────────┬─────────────┐');
+  console.log('│ Metric              │ Value       │');
+  console.log('├─────────────────────┼─────────────┤');
+  console.log(`│ Original albums     │ ${albums.length.toString().padStart(11)} │`);
+  console.log(`│ Consolidated albums │ ${consolidatedAlbums.length.toString().padStart(11)} │`);
+  console.log(`│ Duplicates removed  │ ${duplicatesRemoved.toString().padStart(11)} │`);
+  console.log(`│ Consolidation rate  │ ${consolidationRate.padStart(10)}% │`);
+  console.log('└─────────────────────┴─────────────┘');
   
-  // Log top 500 albums
+  // Log top 500 albums in table format
   console.log(`\n--- TOP 500 ALBUMS ---`);
+  console.log('┌─────┬─────────────────────────────────────────────────────────────────────────────────────────────┬─────────────┬─────────────┬─────────────────────────────┐');
+  console.log('│Rank │ Album & Artist                                                                              │Total Plays │Consolidated│ Original Play Counts         │');
+  console.log('├─────┼─────────────────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────┼─────────────────────────────┤');
+  
   consolidatedAlbums.forEach((album) => {
-    console.log(`#${album.rank}. ${album.artist.name} - "${album.album.name}" (${album.count} plays)`);
+    const albumArtist = `${album.artist.name} - "${album.album.name}"`;
+    const truncatedAlbumArtist = albumArtist.length > 75 ? albumArtist.substring(0, 72) + '...' : albumArtist;
+    const consolidationInfo = album.consolidated_count > 1 ? `${album.consolidated_count}` : '1';
+    const originalCounts = album.consolidated_count > 1 ? album.original_counts.join(', ') : album.count.toString();
+    const truncatedOriginalCounts = originalCounts.length > 25 ? originalCounts.substring(0, 22) + '...' : originalCounts;
+    
+    console.log(`│${album.rank.toString().padStart(4)} │ ${truncatedAlbumArtist.padEnd(75)} │${album.count.toString().padStart(11)} │${consolidationInfo.padStart(11)} │ ${truncatedOriginalCounts.padEnd(25)} │`);
   });
+  
+  console.log('└─────┴─────────────────────────────────────────────────────────────────────────────────────────────┴─────────────┴─────────────┴─────────────────────────────┘');
   
   return {
     metadata: {

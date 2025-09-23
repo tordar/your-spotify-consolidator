@@ -89,6 +89,9 @@ function consolidateAlbums(albums: CleanedAlbum[]): CleanResults {
     'kvelertak': {
       'Kvelertak': ['kvelertak (deluxe edition)', 'kvelertak']
     },
+    'citizen': {
+      'Life In Your Glass World': ['life in your glass world (deluxe edition)', 'life in your glass world']
+    },
     'fleetwood mac': {
       'Rumours': ['rumours', 'rumours (super deluxe)']
     },
@@ -109,6 +112,9 @@ function consolidateAlbums(albums: CleanedAlbum[]): CleanResults {
     },
     'upstrokes': {
       'Gonna Get \'Em': ['gonna get \'em', 'gonna get\'em']
+    },
+    'kanye west': {
+      'The College Dropout': ['the college dropout', 'the college dropout (explicit)']
     }
   };
   

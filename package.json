@@ -6,11 +6,13 @@
   "scripts": {
     "fetch-albums": "tsx fetch-top-albums.ts",
     "clean-albums": "tsx clean-top-albums.ts",
+    "clean-albums-interactive": "tsx clean-top-albums-interactive.ts",
     "fetch-songs": "tsx fetch-top-songs.ts",
     "clean-songs": "tsx clean-top-songs.ts",
     "fetch-artists": "tsx fetch-top-artists.ts",
     "clean-artists": "tsx clean-top-artists.ts",
-    "artist-albums": "tsx artist-albums-summary.ts",
+    "setup-ai": "tsx setup-ai-agent.ts",
+    "ai-consolidate": "tsx ai-consolidate-albums.ts",
     "build": "tsc",
     "dev": "tsx --watch",
     "start": "node dist/index.js"
@@ -31,7 +33,10 @@
   },
   "dependencies": {
     "@types/cli-progress": "^3.11.6",
+    "@types/commander": "^2.12.0",
+    "axios": "^1.12.2",
     "cli-progress": "^3.12.0",
+    "commander": "^11.1.0",
     "dotenv": "^16.0.0"
   },
   "engines": {

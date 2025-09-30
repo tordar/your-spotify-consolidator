@@ -93,7 +93,7 @@ function consolidateAlbums(albums: CleanedAlbum[]): CleanResults {
       'Life In Your Glass World': ['life in your glass world (deluxe edition)', 'life in your glass world']
     },
     'fleetwood mac': {
-      'Rumours': ['rumours', 'rumours (super deluxe)']
+      'Rumours': ['rumours', 'rumours (super deluxe)'] 
     },
     'the velvet underground': {
       'The Velvet Underground & Nico 45th Anniversary': ['the velvet underground & nico 45th anniversary', 'the velvet underground & nico 45th anniversary (super deluxe edition)']

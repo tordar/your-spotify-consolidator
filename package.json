@@ -15,7 +15,7 @@
     "ai-consolidate": "tsx ai-consolidate-albums.ts",
     "build": "tsc",
     "dev": "tsx --watch",
-    "start": "node dist/index.js"
+    "consolidate-all": "tsx consolidate-all-mongodb-data.ts"
   },
   "keywords": [
     "spotify",

@@ -16,7 +16,7 @@
   },
   "include": [
     "*.ts"
-  ],
+, "scripts-for-api-data/clean-top-albums-interactive.ts", "scripts-for-api-data/clean-top-albums.ts", "scripts-for-api-data/clean-top-artists.ts", "scripts-for-api-data/clean-top-songs.ts", "fetch-api-scripts/fetch-top-albums.ts", "fetch-api-scripts/fetch-top-artists.ts", "fetch-api-scripts/fetch-top-songs.ts"  ],
   "exclude": [
     "node_modules",
     "dist",

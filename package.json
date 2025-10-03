@@ -20,7 +20,8 @@
     "fetch-recent-plays": "tsx fetch-recent-plays.ts",
     "merge-recent-data": "tsx merge-recent-data.ts",
     "build-complete-history": "tsx build-complete-history.ts",
-    "setup-spotify-auth": "tsx setup-spotify-auth.ts"
+    "setup-spotify-auth": "tsx setup-spotify-auth.ts",
+    "generate-cleaned-files": "tsx generate-cleaned-files-from-history.ts"
   },
   "keywords": [
     "spotify",

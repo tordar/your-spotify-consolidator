@@ -45,7 +45,7 @@ jobs:
           
       - name: Push changes
         run: |
-          git push origin master
+          git push https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git master
           
       - name: Trigger Vercel deployment
         if: success()

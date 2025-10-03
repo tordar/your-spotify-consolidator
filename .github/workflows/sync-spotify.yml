@@ -44,10 +44,8 @@ jobs:
           git diff --staged --quiet || git commit -m "Daily Spotify sync $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           
       - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: main
+        run: |
+          git push origin master
           
       - name: Trigger Vercel deployment
         if: success()

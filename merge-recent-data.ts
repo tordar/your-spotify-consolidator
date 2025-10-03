@@ -147,7 +147,6 @@ class DataMerger {
       existingSongsMap.set(key, song);
     });
 
-    let newSongsAdded = 0;
     let existingSongsUpdated = 0;
 
     // Process each recent play
@@ -165,44 +164,18 @@ class DataMerger {
         
         console.log(`🔄 Updated: "${play.name}" by ${play.artists[0]} (+1 play)`);
       } else {
-        // Add new song
-        const newSong: ExistingSong = {
-          duration_ms: play.duration_ms,
-          count: 1,
-          songId: play.id,
-          song: {
-            name: play.name,
-            preview_url: play.preview_url,
-            external_urls: play.external_urls
-          },
-          album: {
-            name: play.album.name,
-            images: play.album.images
-          },
-          artist: {
-            name: play.artists[0] || 'Unknown Artist',
-            genres: [] // We don't have genre data from recent plays
-          },
-          consolidated_count: 1,
-          original_songIds: [play.id]
-        };
-        
-        existingData.songs.push(newSong);
-        newSongsAdded++;
-        
-        console.log(`➕ Added: "${play.name}" by ${play.artists[0]} (new song)`);
+        // Skip songs not in top 500 - don't add them
+        console.log(`⏭️  Skipped: "${play.name}" by ${play.artists[0]} (not in top 500)`);
       }
     });
 
     // Update metadata
-    existingData.metadata.originalTotalSongs += newSongsAdded;
-    existingData.metadata.consolidatedTotalSongs = existingData.songs.length;
     existingData.metadata.totalListeningEvents += recentPlays.length;
     existingData.metadata.timestamp = new Date().toISOString();
 
     console.log(`📊 Merge summary:`);
-    console.log(`- New songs added: ${newSongsAdded}`);
     console.log(`- Existing songs updated: ${existingSongsUpdated}`);
+    console.log(`- Songs skipped (not in top 500): ${recentPlays.length - existingSongsUpdated}`);
     console.log(`- Total recent plays processed: ${recentPlays.length}`);
 
     return existingData;

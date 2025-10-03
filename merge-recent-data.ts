@@ -31,16 +31,13 @@ interface RecentPlaysFile {
   plays: RecentPlayData[];
 }
 
-interface ExistingSong {
-  duration_ms: number;
-  count: number;
+interface CompleteSong {
   songId: string;
-  song: {
-    name: string;
-    preview_url: string | null;
-    external_urls: Record<string, string>;
-  };
+  name: string;
+  duration_ms: number;
+  artists: string[];
   album: {
+    id: string;
     name: string;
     images: Array<{
       height: number;
@@ -52,21 +49,31 @@ interface ExistingSong {
     name: string;
     genres: string[];
   };
-  consolidated_count: number;
-  original_songIds: string[];
+  external_urls: {
+    spotify: string;
+  };
+  preview_url: string | null;
+  playCount: number;
+  totalListeningTime: number;
+  listeningEvents: Array<{
+    playedAt: string;
+    msPlayed: number;
+  }>;
 }
 
-interface ExistingData {
+interface CompleteListeningHistory {
   metadata: {
-    originalTotalSongs: number;
-    consolidatedTotalSongs: number;
-    duplicatesRemoved: number;
-    consolidationRate: number;
+    totalSongs: number;
+    totalListeningEvents: number;
+    totalListeningTime: number;
+    dateRange: {
+      earliest: string;
+      latest: string;
+    };
     timestamp: string;
     source: string;
-    totalListeningEvents: number;
   };
-  songs: ExistingSong[];
+  songs: CompleteSong[];
 }
 
 class DataMerger {
@@ -91,19 +98,19 @@ class DataMerger {
   }
 
   /**
-   * Find the most recent cleaned songs file
+   * Find the most recent complete listening history file
    */
-  private findLatestCleanedSongsFile(): string | null {
-    const files = glob.sync('cleaned-data/cleaned-songs-*.json');
+  private findLatestCompleteHistoryFile(): string | null {
+    const files = glob.sync('complete-listening-history/complete-listening-history-*.json');
     if (files.length === 0) {
-      console.log('⚠️  No cleaned-songs files found');
+      console.log('⚠️  No complete listening history files found');
       return null;
     }
     
     // Sort by timestamp (newest first)
     files.sort((a, b) => {
-      const timestampA = parseInt(a.match(/cleaned-songs-(\d+)\.json/)?.[1] || '0');
-      const timestampB = parseInt(b.match(/cleaned-songs-(\d+)\.json/)?.[1] || '0');
+      const timestampA = parseInt(a.match(/complete-listening-history-(\d+)\.json/)?.[1] || '0');
+      const timestampB = parseInt(b.match(/complete-listening-history-(\d+)\.json/)?.[1] || '0');
       return timestampB - timestampA;
     });
     
@@ -123,9 +130,9 @@ class DataMerger {
   }
 
   /**
-   * Load existing consolidated data
+   * Load existing complete listening history
    */
-  private loadExistingData(filename: string): ExistingData {
+  private loadExistingData(filename: string): CompleteListeningHistory {
     try {
       const content = fs.readFileSync(filename, 'utf8');
       return JSON.parse(content);
@@ -137,46 +144,89 @@ class DataMerger {
   /**
    * Merge recent plays with existing data
    */
-  private mergeData(existingData: ExistingData, recentPlays: RecentPlayData[]): ExistingData {
+  private mergeData(existingData: CompleteListeningHistory, recentPlays: RecentPlayData[]): CompleteListeningHistory {
     console.log('🔄 Merging recent plays with existing data...');
     
     // Create a map of existing songs for quick lookup
-    const existingSongsMap = new Map<string, ExistingSong>();
+    const existingSongsMap = new Map<string, CompleteSong>();
     existingData.songs.forEach(song => {
-      const key = `${song.song.name.toLowerCase().trim()}|${song.artist.name.toLowerCase().trim()}`;
+      const key = `${song.name.toLowerCase().trim()}|${song.artists[0]?.toLowerCase().trim() || 'unknown'}`;
       existingSongsMap.set(key, song);
     });
 
     let existingSongsUpdated = 0;
+    let newSongsAdded = 0;
+    const newSongs: CompleteSong[] = [];
 
     // Process each recent play
     recentPlays.forEach(play => {
       const key = `${play.name.toLowerCase().trim()}|${play.artists[0]?.toLowerCase().trim() || 'unknown'}`;
       
       if (existingSongsMap.has(key)) {
-        // Update existing song
+        // Update existing song (maintains chronological position)
         const existingSong = existingSongsMap.get(key)!;
-        existingSong.count += 1;
-        existingSong.consolidated_count += 1;
-        existingSong.duration_ms += play.duration_ms;
-        existingSong.original_songIds.push(play.id);
+        existingSong.playCount += 1;
+        existingSong.totalListeningTime += play.duration_ms;
+        existingSong.listeningEvents.push({
+          playedAt: play.played_at,
+          msPlayed: play.duration_ms
+        });
         existingSongsUpdated++;
         
         console.log(`🔄 Updated: "${play.name}" by ${play.artists[0]} (+1 play)`);
       } else {
-        // Skip songs not in top 500 - don't add them
-        console.log(`⏭️  Skipped: "${play.name}" by ${play.artists[0]} (not in top 500)`);
+        // Add new song (will be appended to end)
+        const newSong: CompleteSong = {
+          songId: play.id,
+          name: play.name,
+          duration_ms: play.duration_ms,
+          artists: play.artists,
+          album: play.album,
+          artist: {
+            name: play.artists[0] || 'Unknown Artist',
+            genres: [] // We don't have genre data from recent plays
+          },
+          external_urls: play.external_urls,
+          preview_url: play.preview_url,
+          playCount: 1,
+          totalListeningTime: play.duration_ms,
+          listeningEvents: [{
+            playedAt: play.played_at,
+            msPlayed: play.duration_ms
+          }]
+        };
+        
+        newSongs.push(newSong);
+        newSongsAdded++;
+        console.log(`➕ Added: "${play.name}" by ${play.artists[0]} (new song)`);
       }
     });
 
+    // Append new songs to the end (maintains chronological order)
+    existingData.songs.push(...newSongs);
+
     // Update metadata
+    existingData.metadata.totalSongs += newSongsAdded;
     existingData.metadata.totalListeningEvents += recentPlays.length;
+    existingData.metadata.totalListeningTime += recentPlays.reduce((sum, play) => sum + play.duration_ms, 0);
     existingData.metadata.timestamp = new Date().toISOString();
+    
+    // Update date range if needed
+    const allDates = existingData.songs.flatMap(song => 
+      song.listeningEvents.map(event => new Date(event.playedAt))
+    );
+    allDates.sort((a, b) => a.getTime() - b.getTime());
+    
+    if (allDates.length > 0) {
+      existingData.metadata.dateRange.earliest = allDates[0].toISOString();
+      existingData.metadata.dateRange.latest = allDates[allDates.length - 1].toISOString();
+    }
 
     console.log(`📊 Merge summary:`);
     console.log(`- Existing songs updated: ${existingSongsUpdated}`);
-    console.log(`- Songs skipped (not in top 500): ${recentPlays.length - existingSongsUpdated}`);
+    console.log(`- New songs added: ${newSongsAdded}`);
     console.log(`- Total recent plays processed: ${recentPlays.length}`);
+    console.log(`- Total songs now: ${existingData.metadata.totalSongs}`);
 
     return existingData;
   }
@@ -184,9 +234,9 @@ class DataMerger {
   /**
    * Save merged data
    */
-  private saveMergedData(data: ExistingData): void {
+  private saveMergedData(data: CompleteListeningHistory): void {
     const timestamp = Date.now();
-    const filename = `cleaned-data/cleaned-songs-${timestamp}.json`;
+    const filename = `complete-listening-history/complete-listening-history-${timestamp}.json`;
     
     fs.writeFileSync(filename, JSON.stringify(data, null, 2));
     console.log(`💾 Saved merged data to: ${filename}`);
@@ -201,7 +251,7 @@ class DataMerger {
       
       // Find latest files
       const recentPlaysFile = this.findLatestRecentPlaysFile();
-      const existingDataFile = this.findLatestCleanedSongsFile();
+      const existingDataFile = this.findLatestCompleteHistoryFile();
       
       if (!recentPlaysFile) {
         console.log('⚠️  No recent plays data to merge');

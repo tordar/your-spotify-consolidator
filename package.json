@@ -19,6 +19,7 @@
     "consolidate-albums-with-songs": "tsx consolidate-albums-with-songs.ts",
     "fetch-recent-plays": "tsx fetch-recent-plays.ts",
     "merge-recent-data": "tsx merge-recent-data.ts",
+    "build-complete-history": "tsx build-complete-history.ts",
     "setup-spotify-auth": "tsx setup-spotify-auth.ts"
   },
   "keywords": [

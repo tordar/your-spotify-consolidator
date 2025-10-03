@@ -48,6 +48,7 @@ interface CompleteListeningHistory {
 
 // Output types (matching existing format)
 interface CleanedSong {
+  rank: number;
   duration_ms: number;
   count: number;
   songId: string;
@@ -73,6 +74,7 @@ interface CleanedSong {
 }
 
 interface CleanedAlbum {
+  rank: number;
   duration_ms: number;
   count: number;
   differents: number;
@@ -99,6 +101,7 @@ interface CleanedAlbum {
 }
 
 interface CleanedArtist {
+  rank: number;
   duration_ms: number;
   count: number;
   differents: number;
@@ -301,6 +304,7 @@ class CleanedFilesGenerator {
 
     // Convert complete songs to cleaned format
     const songs: CleanedSong[] = history.songs.map(song => ({
+      rank: 0, // Temporary rank, will be updated after sorting
       duration_ms: song.totalListeningTime, // Total listening time
       count: song.playCount,
       songId: song.songId,
@@ -321,8 +325,17 @@ class CleanedFilesGenerator {
       original_songIds: [song.songId]
     }));
 
+    // Sort by play count (descending) before consolidation
+    songs.sort((a, b) => b.count - a.count);
+    
     // Consolidate songs
-    return this.consolidateSongs(songs);
+    const consolidatedSongs = this.consolidateSongs(songs);
+    
+    // Take top 500 and add rank
+    return consolidatedSongs.slice(0, 500).map((song, index) => ({
+      ...song,
+      rank: index + 1
+    }));
   }
 
   /**
@@ -363,6 +376,7 @@ class CleanedFilesGenerator {
       const firstSong = data.songs[0];
       
       return {
+        rank: 0, // Temporary rank, will be updated after sorting
         duration_ms: data.totalListeningTime,
         count: data.totalPlayCount,
         differents: data.differentSongs.size,
@@ -389,7 +403,13 @@ class CleanedFilesGenerator {
     albums.sort((a, b) => b.count - a.count);
     
     // Consolidate albums
-    return this.consolidateAlbums(albums);
+    const consolidatedAlbums = this.consolidateAlbums(albums);
+    
+    // Take top 500 and add rank
+    return consolidatedAlbums.slice(0, 500).map((album, index) => ({
+      ...album,
+      rank: index + 1
+    }));
   }
 
   /**
@@ -430,6 +450,7 @@ class CleanedFilesGenerator {
       const firstSong = data.songs[0];
       
       return {
+        rank: 0, // Temporary rank, will be updated after sorting
         duration_ms: data.totalListeningTime,
         count: data.totalPlayCount,
         differents: data.differentSongs.size,
@@ -455,7 +476,13 @@ class CleanedFilesGenerator {
     artists.sort((a, b) => b.count - a.count);
     
     // Consolidate artists
-    return this.consolidateArtists(artists);
+    const consolidatedArtists = this.consolidateArtists(artists);
+    
+    // Take top 500 and add rank
+    return consolidatedArtists.slice(0, 500).map((artist, index) => ({
+      ...artist,
+      rank: index + 1
+    }));
   }
 
   /**
@@ -563,6 +590,7 @@ class CleanedFilesGenerator {
       }));
 
       return {
+        rank: 0, // Temporary rank, will be updated after sorting
         duration_ms: totalListeningTime,
         count: totalPlayCount,
         differents: songs.length,
@@ -589,14 +617,19 @@ class CleanedFilesGenerator {
       };
     });
 
-    // Sort by play count (descending) and take top 100 before consolidation
+    // Sort by play count (descending) before consolidation
     albumsWithSongs.sort((a, b) => b.count - a.count);
-    const top100Albums = albumsWithSongs.slice(0, 100);
     
     const originalCount = albumsWithSongs.length;
-    const consolidatedAlbums = this.consolidateAlbumsWithSongs(top100Albums);
+    const consolidatedAlbums = this.consolidateAlbumsWithSongs(albumsWithSongs);
     
-    return { albums: consolidatedAlbums, originalCount };
+    // Take top 100 and add rank
+    const rankedAlbums = consolidatedAlbums.slice(0, 100).map((album, index) => ({
+      ...album,
+      rank: index + 1
+    }));
+    
+    return { albums: rankedAlbums, originalCount };
   }
 
   /**

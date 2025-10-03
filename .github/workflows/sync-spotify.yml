@@ -1,0 +1,60 @@
+name: Daily Spotify Data Sync
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual triggers
+
+jobs:
+  sync-spotify-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Fetch recent Spotify plays
+        env:
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+          SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
+        run: npm run fetch-recent-plays
+        
+      - name: Merge recent data with existing data
+        run: npm run merge-recent-data
+        
+      - name: Consolidate all data
+        run: npm run consolidate-all
+        
+      - name: Commit changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add cleaned-data/
+          git diff --staged --quiet || git commit -m "Daily Spotify sync $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
+          
+      - name: Trigger Vercel deployment
+        if: success()
+        run: |
+          if [ -n "${{ secrets.VERCEL_DEPLOY_HOOK }}" ]; then
+            curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
+            echo "Vercel deployment triggered"
+          else
+            echo "No Vercel deploy hook configured"
+          fi

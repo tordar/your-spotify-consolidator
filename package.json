@@ -15,7 +15,9 @@
     "ai-consolidate": "tsx ai-consolidate-albums.ts",
     "build": "tsc",
     "dev": "tsx --watch",
-    "consolidate-albums-with-songs": "tsx consolidate-albums-with-songs.ts"
+    "consolidate-albums-with-songs": "tsx consolidate-albums-with-songs.ts",
+    "fetch-recent-plays": "tsx fetch-recent-plays.ts",
+    "setup-spotify-auth": "tsx setup-spotify-auth.ts"
   },
   "keywords": [
     "spotify",
@@ -37,7 +39,8 @@
     "axios": "^1.12.2",
     "cli-progress": "^3.12.0",
     "commander": "^11.1.0",
-    "dotenv": "^16.0.0"
+    "dotenv": "^16.0.0",
+    "glob": "^10.3.10"
   },
   "engines": {
     "node": ">=18.0.0"

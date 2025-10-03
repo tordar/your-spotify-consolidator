@@ -15,6 +15,7 @@
     "ai-consolidate": "tsx ai-consolidate-albums.ts",
     "build": "tsc",
     "dev": "tsx --watch",
+    "consolidate-all": "tsx consolidate-all-mongodb-data.ts",
     "consolidate-albums-with-songs": "tsx consolidate-albums-with-songs.ts",
     "fetch-recent-plays": "tsx fetch-recent-plays.ts",
     "merge-recent-data": "tsx merge-recent-data.ts",

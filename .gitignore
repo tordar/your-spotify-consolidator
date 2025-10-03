@@ -44,3 +44,7 @@ coverage/
 
 # TypeScript cache
 *.tsbuildinfo
+
+# Documentation and planning files
+PRODUCT_VISION.md
+Todo.txt

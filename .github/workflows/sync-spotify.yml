@@ -33,8 +33,8 @@ jobs:
       - name: Merge recent data with existing data
         run: npm run merge-recent-data
         
-      - name: Consolidate all data
-        run: npm run consolidate-all
+      - name: Consolidate albums and artists
+        run: npm run consolidate-albums-with-songs
         
       - name: Commit changes
         run: |

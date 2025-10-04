@@ -192,7 +192,7 @@
                     throw new Error('No merged streaming history files found');
                 }
                 
-                const response = await fetch(`../merged-streaming-history/${latestFile}`);
+                const response = await fetch(`/merged-streaming-history/${latestFile}`);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -234,7 +234,7 @@
                 
                 for (const pattern of commonPatterns) {
                     try {
-                        const response = await fetch(`../merged-streaming-history/${pattern}`);
+                        const response = await fetch(`/merged-streaming-history/${pattern}`);
                         if (response.ok) {
                             console.log(`Found file: ${pattern}`);
                             return pattern;

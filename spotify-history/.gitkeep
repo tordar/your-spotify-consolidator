@@ -1,0 +1,2 @@
+# This file ensures the spotify-history directory is tracked by Git
+# Users should add their Spotify export files (Streaming_History_Audio_*.json) here

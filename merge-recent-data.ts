@@ -76,6 +76,21 @@ interface CompleteListeningHistory {
   songs: CompleteSong[];
 }
 
+interface MergedStreamingHistory {
+  metadata: {
+    totalSongs: number;
+    totalPlayEvents: number;
+    dateRange: {
+      earliest: string;
+      latest: string;
+    };
+    filesProcessed: string[];
+    timestamp: string;
+    source: string;
+  };
+  songs: CompleteSong[];
+}
+
 class DataMerger {
   /**
    * Find the most recent recent-plays file
@@ -101,7 +116,14 @@ class DataMerger {
    * Find the most recent complete listening history file
    */
   private findLatestCompleteHistoryFile(): string | null {
-    const files = glob.sync('complete-listening-history/complete-listening-history-*.json');
+    // First check for merged streaming history files (new format)
+    let files = glob.sync('merged-streaming-history/merged-streaming-history-*.json');
+    
+    if (files.length === 0) {
+      // Fallback to old complete listening history format
+      files = glob.sync('complete-listening-history/complete-listening-history-*.json');
+    }
+    
     if (files.length === 0) {
       console.log('⚠️  No complete listening history files found');
       return null;
@@ -109,8 +131,8 @@ class DataMerger {
     
     // Sort by timestamp (newest first)
     files.sort((a, b) => {
-      const timestampA = parseInt(a.match(/complete-listening-history-(\d+)\.json/)?.[1] || '0');
-      const timestampB = parseInt(b.match(/complete-listening-history-(\d+)\.json/)?.[1] || '0');
+      const timestampA = parseInt(a.match(/(?:merged-streaming-history-|complete-listening-history-)(\d+)\.json/)?.[1] || '0');
+      const timestampB = parseInt(b.match(/(?:merged-streaming-history-|complete-listening-history-)(\d+)\.json/)?.[1] || '0');
       return timestampB - timestampA;
     });
     
@@ -130,12 +152,31 @@ class DataMerger {
   }
 
   /**
-   * Load existing complete listening history
+   * Load existing complete listening history (handles both formats)
    */
   private loadExistingData(filename: string): CompleteListeningHistory {
     try {
       const content = fs.readFileSync(filename, 'utf8');
-      return JSON.parse(content);
+      const data = JSON.parse(content);
+      
+      // Check if it's the new merged streaming history format
+      if (data.metadata && data.metadata.totalPlayEvents !== undefined) {
+        // Convert MergedStreamingHistory to CompleteListeningHistory format
+        return {
+          metadata: {
+            totalSongs: data.metadata.totalSongs,
+            totalListeningEvents: data.metadata.totalPlayEvents,
+            totalListeningTime: data.songs.reduce((sum: number, song: CompleteSong) => sum + song.totalListeningTime, 0),
+            dateRange: data.metadata.dateRange,
+            timestamp: data.metadata.timestamp,
+            source: data.metadata.source
+          },
+          songs: data.songs
+        };
+      }
+      
+      // Return as-is if it's already CompleteListeningHistory format
+      return data;
     } catch (error) {
       throw new Error(`Failed to load existing data file: ${error}`);
     }
@@ -236,9 +277,22 @@ class DataMerger {
    */
   private saveMergedData(data: CompleteListeningHistory): void {
     const timestamp = Date.now();
-    const filename = `complete-listening-history/complete-listening-history-${timestamp}.json`;
+    const filename = `merged-streaming-history/merged-streaming-history-${timestamp}.json`;
     
-    fs.writeFileSync(filename, JSON.stringify(data, null, 2));
+    // Convert to MergedStreamingHistory format
+    const mergedData = {
+      metadata: {
+        totalSongs: data.metadata.totalSongs,
+        totalPlayEvents: data.metadata.totalListeningEvents,
+        dateRange: data.metadata.dateRange,
+        filesProcessed: ['recent-plays-api'],
+        timestamp: data.metadata.timestamp,
+        source: `${data.metadata.source} + Recent Plays API`
+      },
+      songs: data.songs
+    };
+    
+    fs.writeFileSync(filename, JSON.stringify(mergedData, null, 2));
     console.log(`💾 Saved merged data to: ${filename}`);
   }
 

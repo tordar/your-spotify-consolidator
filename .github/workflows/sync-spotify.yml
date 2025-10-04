@@ -30,17 +30,14 @@ jobs:
           SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
         run: npm run fetch-recent-plays
         
-      - name: Merge recent data with complete listening history
+      - name: Merge recent data with merged streaming history
         run: npm run merge-recent-data
-        
-      - name: Generate all cleaned files from updated history
-        run: npm run generate-cleaned-files
         
       - name: Commit changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add cleaned-data/ complete-listening-history/
+          git add merged-streaming-history/ recent-plays-*.json
           git diff --staged --quiet || git commit -m "Daily Spotify sync $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           
       - name: Push changes

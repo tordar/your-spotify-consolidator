@@ -1,4 +1,8 @@
 import * as fs from 'fs';
+import * as dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 interface SpotifyTokens {
   access_token: string;
@@ -34,8 +38,6 @@ class SpotifyTokenManager {
    */
   async getValidAccessToken(): Promise<string> {
     try {
-      console.log('🔄 Getting fresh Spotify access token...');
-      
       const response = await fetch('https://accounts.spotify.com/api/token', {
         method: 'POST',
         headers: {
@@ -53,8 +55,7 @@ class SpotifyTokenManager {
         throw new Error(`Failed to refresh token: ${response.status} ${errorText}`);
       }
 
-      const tokens: SpotifyTokens = await response.json();
-      console.log('✅ Successfully refreshed access token');
+      const tokens = await response.json() as SpotifyTokens;
       
       return tokens.access_token;
     } catch (error) {
@@ -75,7 +76,7 @@ class SpotifyTokenManager {
       });
 
       if (response.ok) {
-        const user = await response.json();
+        const user = await response.json() as any;
         console.log(`✅ Token valid for user: ${user.display_name || user.id}`);
         return true;
       } else {

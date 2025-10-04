@@ -21,7 +21,10 @@
     "merge-recent-data": "tsx merge-recent-data.ts",
     "build-complete-history": "tsx build-complete-history.ts",
     "setup-spotify-auth": "tsx setup-spotify-auth.ts",
-    "generate-cleaned-files": "tsx generate-cleaned-files-from-history.ts"
+    "generate-cleaned-files": "tsx generate-cleaned-files-from-history.ts",
+    "merge-streaming-history": "tsx merge-streaming-history.ts",
+    "enrich-streaming-history": "tsx enrich-streaming-history.ts",
+    "test-spotify-api": "tsx test-spotify-api.ts"
   },
   "keywords": [
     "spotify",

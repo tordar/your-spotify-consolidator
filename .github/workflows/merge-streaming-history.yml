@@ -1,0 +1,66 @@
+name: Merge Streaming History
+
+on:
+  push:
+    paths:
+      - 'spotify-history/**'
+  pull_request:
+    paths:
+      - 'spotify-history/**'
+
+jobs:
+  merge-history:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Check for spotify-history files
+        id: check-files
+        run: |
+          if [ -d "spotify-history" ] && [ "$(ls -A spotify-history/*.json 2>/dev/null)" ]; then
+            echo "files_exist=true" >> $GITHUB_OUTPUT
+            echo "Found Spotify history files"
+            ls -la spotify-history/
+          else
+            echo "files_exist=false" >> $GITHUB_OUTPUT
+            echo "No Spotify history files found"
+          fi
+          
+      - name: Run merge streaming history
+        if: steps.check-files.outputs.files_exist == 'true'
+        run: npm run merge-streaming-history
+        
+      - name: Upload merged data
+        if: steps.check-files.outputs.files_exist == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: merged-streaming-history
+          path: merged-streaming-history/
+          retention-days: 30
+          
+      - name: Commit merged data
+        if: steps.check-files.outputs.files_exist == 'true' && github.event_name == 'push'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          if [ -d "merged-streaming-history" ]; then
+            git add merged-streaming-history/
+            if git diff --staged --quiet; then
+              echo "No changes to commit"
+            else
+              git commit -m "Auto-merge streaming history data [skip ci]"
+              git push
+            fi
+          fi

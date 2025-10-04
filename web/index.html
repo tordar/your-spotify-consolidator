@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Spotify Stats</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1db954, #191414);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .stats-summary {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #1db954;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .songs-section {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .song-item {
+            display: flex;
+            align-items: center;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: transform 0.2s ease;
+        }
+
+        .song-item:hover {
+            transform: translateY(-2px);
+            background: rgba(255,255,255,0.15);
+        }
+
+        .song-info {
+            flex: 1;
+        }
+
+        .song-name {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .song-artist {
+            color: #b3b3b3;
+            margin-bottom: 5px;
+        }
+
+        .song-album {
+            color: #b3b3b3;
+            font-size: 0.9rem;
+        }
+
+        .song-stats {
+            text-align: right;
+            margin-left: 20px;
+        }
+
+        .play-count {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #1db954;
+        }
+
+        .play-label {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2rem;
+        }
+
+        .error {
+            background: rgba(255,0,0,0.2);
+            border: 1px solid rgba(255,0,0,0.5);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 My Spotify Stats</h1>
+        
+        <div id="loading" class="loading">
+            Loading your Spotify data...
+        </div>
+
+        <div id="content" style="display: none;">
+            <div class="stats-summary">
+                <div class="stats-grid" id="stats-grid">
+                    <!-- Stats will be populated here -->
+                </div>
+            </div>
+
+            <div class="songs-section">
+                <h2 style="margin-bottom: 20px;">🔥 Top 5 Most Played Songs</h2>
+                <div id="songs-list">
+                    <!-- Songs will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <div id="error" class="error" style="display: none;">
+            <h3>❌ Error Loading Data</h3>
+            <p>Could not load your Spotify data. Make sure you have:</p>
+            <ul style="text-align: left; margin-top: 10px;">
+                <li>Added your Spotify history files to the <code>spotify-history/</code> folder</li>
+                <li>Run the merge script to generate <code>merged-streaming-history-*.json</code></li>
+                <li>Enabled GitHub Pages in your repository settings</li>
+            </ul>
+        </div>
+
+        <div id="no-data" class="no-data" style="display: none;">
+            <h3>📁 No Data Found</h3>
+            <p>No merged streaming history files found. Please add your Spotify data and run the merge script.</p>
+        </div>
+    </div>
+
+    <script>
+        async function loadSpotifyData() {
+            try {
+                // For local testing, try to load sample data first
+                let response;
+                try {
+                    response = await fetch('../merged-streaming-history/merged-streaming-history-1759584641959.json');
+                } catch (corsError) {
+                    // If CORS fails, try loading sample data from web folder
+                    response = await fetch('sample-data.json');
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                // Hide loading, show content
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                
+                // Populate stats
+                populateStats(data);
+                
+                // Populate top 5 songs
+                populateTopSongs(data);
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                
+                // Hide loading, show error
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+            }
+        }
+
+        function populateStats(data) {
+            const statsGrid = document.getElementById('stats-grid');
+            
+            const totalListeningTime = Math.round(data.songs.reduce((sum, song) => sum + song.totalListeningTime, 0) / 1000 / 60 / 60); // hours
+            const totalSongs = data.songs.length;
+            const totalPlays = data.metadata.totalPlayEvents;
+            const dateRange = data.metadata.dateRange;
+            
+            const startDate = new Date(dateRange.earliest).toLocaleDateString();
+            const endDate = new Date(dateRange.latest).toLocaleDateString();
+            
+            statsGrid.innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-number">${totalListeningTime.toLocaleString()}</div>
+                    <div class="stat-label">Hours Listened</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${totalSongs.toLocaleString()}</div>
+                    <div class="stat-label">Unique Songs</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${totalPlays.toLocaleString()}</div>
+                    <div class="stat-label">Total Plays</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${startDate}</div>
+                    <div class="stat-label">First Play</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${endDate}</div>
+                    <div class="stat-label">Last Play</div>
+                </div>
+            `;
+        }
+
+        function populateTopSongs(data) {
+            const songsList = document.getElementById('songs-list');
+            
+            // Sort songs by play count and take top 5
+            const topSongs = data.songs
+                .sort((a, b) => b.playCount - a.playCount)
+                .slice(0, 5);
+            
+            if (topSongs.length === 0) {
+                songsList.innerHTML = '<div class="no-data">No songs found in your data.</div>';
+                return;
+            }
+            
+            songsList.innerHTML = topSongs.map((song, index) => `
+                <div class="song-item">
+                    <div class="song-info">
+                        <div class="song-name">${song.name}</div>
+                        <div class="song-artist">${song.artists.join(', ')}</div>
+                        <div class="song-album">${song.album.name}</div>
+                    </div>
+                    <div class="song-stats">
+                        <div class="play-count">${song.playCount}</div>
+                        <div class="play-label">plays</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Load data when page loads
+        document.addEventListener('DOMContentLoaded', loadSpotifyData);
+    </script>
+</body>
+</html>

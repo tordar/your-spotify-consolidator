@@ -192,7 +192,7 @@
                     throw new Error('No merged streaming history files found');
                 }
                 
-                const response = await fetch(`/merged-streaming-history/${latestFile}`);
+                const response = await fetch(latestFile);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -221,30 +221,28 @@
 
         async function findLatestMergedFile() {
             try {
-                // Try to get a list of files from the merged-streaming-history directory
-                // This is a bit tricky with GitHub Pages, so we'll try a few approaches
-                
-                // Approach 1: Try to fetch the directory listing (won't work on GitHub Pages)
-                // Approach 2: Try common file patterns
-                const commonPatterns = [
-                    'merged-streaming-history-1759584641959.json', // Current file
-                    'merged-streaming-history-1759583742723.json', // Previous file
-                    'enriched-streaming-history.json' // Enriched version if it exists
+                // Try different approaches for GitHub Pages vs local development
+                const patterns = [
+                    // First try sample data in docs folder (works on GitHub Pages)
+                    { path: 'sample-data.json', isSample: true },
+                    // Then try merged-streaming-history folder
+                    { path: '/merged-streaming-history/merged-streaming-history-1759584641959.json', isSample: false },
+                    { path: '/merged-streaming-history/merged-streaming-history-1759583742723.json', isSample: false },
+                    { path: '/merged-streaming-history/enriched-streaming-history.json', isSample: false }
                 ];
                 
-                for (const pattern of commonPatterns) {
+                for (const pattern of patterns) {
                     try {
-                        const response = await fetch(`/merged-streaming-history/${pattern}`);
+                        const response = await fetch(pattern.path);
                         if (response.ok) {
-                            console.log(`Found file: ${pattern}`);
-                            return pattern;
+                            console.log(`Found file: ${pattern.path}`);
+                            return pattern.path;
                         }
                     } catch (e) {
                         // Continue to next pattern
                     }
                 }
                 
-                // If no common patterns work, return null
                 return null;
                 
             } catch (error) {

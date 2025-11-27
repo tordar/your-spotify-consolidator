@@ -340,8 +340,8 @@ export default function ProfilePage() {
       description="Manage your Spotify history files and account settings"
       currentPage="profile"
     >
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+        <div className="flex flex-wrap gap-2">
           <Button
             onClick={handleMergeHistory}
             disabled={isMerging || isSyncing || isGenerating}

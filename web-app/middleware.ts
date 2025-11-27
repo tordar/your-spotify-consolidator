@@ -11,6 +11,7 @@ export default async function middleware(req: NextRequest) {
 
   // Skip auth check for public routes
   if (isPublicRoute) {
+    console.log('[Middleware] Public route, skipping auth:', pathname)
     return NextResponse.next()
   }
 
@@ -20,6 +21,10 @@ export default async function middleware(req: NextRequest) {
     session = await auth()
   } catch (error) {
     console.error('[Middleware] Auth error:', error)
+    console.error('[Middleware] Auth error details:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    })
     session = null
   }
   

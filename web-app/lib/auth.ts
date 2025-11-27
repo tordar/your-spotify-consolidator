@@ -21,15 +21,20 @@ function generateUUID(): string {
 // Saves users/accounts to Supabase PostgreSQL
 // Using JWT sessions for Edge runtime compatibility (middleware)
 
-// Debug: Log environment variables (remove in production)
-if (process.env.NODE_ENV === 'development') {
-  console.log('NextAuth Config - AUTH_URL:', process.env.AUTH_URL)
-  console.log('NextAuth Config - NEXTAUTH_URL:', process.env.NEXTAUTH_URL)
-  console.log('NextAuth Config - AUTH_TRUST_HOST:', process.env.AUTH_TRUST_HOST)
-}
+// Debug: Log environment variables (always log in production to debug)
+console.log('[NextAuth Config]', {
+  NODE_ENV: process.env.NODE_ENV,
+  AUTH_URL: process.env.AUTH_URL,
+  NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+  AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
+  VERCEL_URL: process.env.VERCEL_URL,
+  VERCEL_ENV: process.env.VERCEL_ENV,
+  hasAUTH_SECRET: !!process.env.AUTH_SECRET,
+  hasGOOGLE_CLIENT_ID: !!process.env.GOOGLE_CLIENT_ID,
+})
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  trustHost: true, // Trust the host header (needed for Vercel and similar)
+  trustHost: true, // Trust the host header (needed for Vercel preview deployments)
   secret: process.env.AUTH_SECRET, // Explicitly set secret
   providers: [
     Google({

@@ -204,16 +204,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token
     },
     async session({ session, token }) {
-      // If no token ID, don't add user ID to session
-      // This will make the session invalid for our middleware check
+      // If no token ID, return null to indicate no valid session
+      // This ensures middleware correctly identifies unauthenticated users
       if (!token?.id) {
-        // Return session without user.id - middleware will reject it
-        return session
+        console.log('[NextAuth] Session callback: No token.id, returning null')
+        return null as any
       }
       // Add user ID to session
       if (session?.user) {
         session.user.id = token.id as string
       }
+      console.log('[NextAuth] Session callback: Valid session with user.id:', session?.user?.id)
       return session
     },
   },

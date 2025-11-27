@@ -5,6 +5,17 @@ import type { NextRequest } from 'next/server'
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
   
+  // Log EVERY request to confirm middleware is running
+  console.log('[Middleware] START - Processing request:', {
+    pathname,
+    method: req.method,
+    url: req.url,
+    headers: {
+      host: req.headers.get('host'),
+      cookie: req.headers.get('cookie') ? 'present' : 'missing',
+    }
+  })
+  
   // Public routes that don't require authentication
   const publicRoutes = ['/auth/signin', '/auth/signout', '/auth/error', '/api/auth']
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
@@ -19,6 +30,15 @@ export default async function middleware(req: NextRequest) {
   let session
   try {
     session = await auth()
+    console.log('[Middleware] auth() returned:', {
+      sessionType: typeof session,
+      isNull: session === null,
+      isUndefined: session === undefined,
+      hasUser: !!session?.user,
+      userKeys: session?.user ? Object.keys(session.user) : [],
+      userId: session?.user?.id,
+      fullSession: JSON.stringify(session, null, 2).substring(0, 500) // First 500 chars for debugging
+    })
   } catch (error) {
     console.error('[Middleware] Auth error:', error)
     console.error('[Middleware] Auth error details:', {

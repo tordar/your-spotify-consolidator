@@ -21,7 +21,11 @@ export async function GET(request: NextRequest) {
   const session = await auth()
   
   if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Redirect to sign-in page instead of returning JSON
+    // This provides a better user experience
+    const signInUrl = new URL('/auth/signin', request.url)
+    signInUrl.searchParams.set('callbackUrl', '/profile')
+    return NextResponse.redirect(signInUrl)
   }
 
   const clientId = process.env.SPOTIFY_CLIENT_ID

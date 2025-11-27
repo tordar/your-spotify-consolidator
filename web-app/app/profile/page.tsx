@@ -74,12 +74,8 @@ export default function ProfilePage() {
   }, [session])
 
   const handleConnectSpotify = async () => {
-    if (!session?.user?.id) {
-      alert('Please log in first')
-      return
-    }
-    
-    // Workaround: Use custom API route to bypass NextAuth v5 beta URL construction bug
+    // Let the API route handle authentication check
+    // Direct navigation - the API route will check auth and redirect appropriately
     window.location.href = '/api/spotify/connect'
   }
 

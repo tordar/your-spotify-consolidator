@@ -15,13 +15,25 @@ export default async function middleware(req: NextRequest) {
   }
 
   // Check authentication for protected routes
-  const session = await auth()
+  let session
+  try {
+    session = await auth()
+  } catch (error) {
+    console.error('[Middleware] Auth error:', error)
+    session = null
+  }
   
   // Very strict check - session must exist, have user, and user must have an ID
-  const isAuthenticated = !!(
-    session && 
-    session.user && 
-    session.user.id &&
+  // Explicitly check for null/undefined and ensure user.id is a valid string
+  const isAuthenticated = (
+    session !== null &&
+    session !== undefined &&
+    typeof session === 'object' &&
+    session.user !== null &&
+    session.user !== undefined &&
+    typeof session.user === 'object' &&
+    session.user.id !== null &&
+    session.user.id !== undefined &&
     typeof session.user.id === 'string' &&
     session.user.id.length > 0
   )
@@ -30,19 +42,23 @@ export default async function middleware(req: NextRequest) {
   console.log('[Middleware]', {
     pathname,
     isAuthenticated,
-    hasSession: !!session,
+    sessionType: typeof session,
+    sessionIsNull: session === null,
+    sessionIsUndefined: session === undefined,
     hasUser: !!session?.user,
-    hasUserId: !!session?.user?.id,
-    userId: session?.user?.id || 'none'
+    userId: session?.user?.id || 'none',
+    userIdType: typeof session?.user?.id
   })
 
-  // If not authenticated, redirect to sign-in
+  // If not authenticated, ALWAYS redirect to sign-in
   if (!isAuthenticated) {
-    console.log('[Middleware] Redirecting to sign-in:', pathname)
+    console.log('[Middleware] NOT AUTHENTICATED - Redirecting to sign-in:', pathname)
     const signInUrl = new URL('/auth/signin', req.url)
     signInUrl.searchParams.set('callbackUrl', pathname)
     return NextResponse.redirect(signInUrl)
   }
+  
+  console.log('[Middleware] AUTHENTICATED - Allowing access:', pathname)
 
   // If authenticated and trying to access sign-in page, redirect to home
   if (pathname.startsWith('/auth/signin')) {

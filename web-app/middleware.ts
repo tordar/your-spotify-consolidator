@@ -5,10 +5,12 @@ import type { NextRequest } from 'next/server'
 export default async function middleware(req: NextRequest) {
   const session = await auth()
   const { pathname } = req.nextUrl
-  const isAuthenticated = !!session
+  
+  // More strict check - ensure session has a user with an ID
+  const isAuthenticated = !!(session?.user?.id)
 
   // Public routes
-  const publicRoutes = ['/auth/signin', '/auth/signout', '/auth/error']
+  const publicRoutes = ['/auth/signin', '/auth/signout', '/auth/error', '/api/auth']
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
 
   // If not authenticated and trying to access protected route
@@ -18,6 +20,7 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.redirect(signInUrl)
   }
 
+  // If authenticated and trying to access sign-in page, redirect to home
   if (isAuthenticated && pathname.startsWith('/auth/signin')) {
     return NextResponse.redirect(new URL('/', req.url))
   }

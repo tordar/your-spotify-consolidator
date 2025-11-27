@@ -235,7 +235,13 @@ export default function ProfilePage() {
   }
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: '/auth/signin' })
+    try {
+      await signOut({ callbackUrl: '/auth/signin', redirect: true })
+    } catch (error) {
+      console.error('Logout error:', error)
+      // Force redirect even if signOut fails
+      window.location.href = '/auth/signin'
+    }
   }
 
   const handleMergeHistory = async () => {
@@ -363,7 +369,7 @@ export default function ProfilePage() {
             {isGenerating ? 'Generating...' : 'Generate Cleaned Files'}
           </Button>
         </div>
-        {session?.user && (
+        {session?.user?.id && (
           <Button
             variant="outline"
             onClick={handleLogout}

@@ -194,8 +194,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token
     },
     async session({ session, token }) {
+      // If no token ID, the session is invalid - return null
+      if (!token?.id) {
+        return null as any
+      }
       // Add user ID to session
-      if (session.user) {
+      if (session?.user) {
         session.user.id = token.id as string
       }
       return session

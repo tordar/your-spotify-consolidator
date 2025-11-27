@@ -1,16 +1,4 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "web-app/package.json",
-      "use": "@vercel/next"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "web-app/$1"
-    }
-  ],
+  "buildCommand": "cd web-app && npm install && npm run build",
   "installCommand": "npm install && cd web-app && npm install"
 }

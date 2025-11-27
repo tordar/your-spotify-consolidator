@@ -369,7 +369,7 @@ export default function StatsPage() {
     const minutes = totalMinutes % 60
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
   }
-  
+
   return (
     <SpotifyStatsLayout
       title="Spotify Statistics"
@@ -634,7 +634,7 @@ export default function StatsPage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-muted-foreground">
-                      {statsData.stats?.yearlyListeningTime ? 'No yearly data available' : 'Loading chart data...'}
+                      No yearly data available
                     </p>
                   </CardContent>
                 </Card>

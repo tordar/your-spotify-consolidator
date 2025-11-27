@@ -1,23 +1,35 @@
 import { NextResponse } from 'next/server'
-import { readdir, readFile } from 'fs/promises'
-import { join } from 'path'
+import { auth } from '@/lib/auth'
+import { listUserFiles, downloadFile } from '@/lib/storage'
 
 export async function GET() {
   try {
-    const dataDir = join(process.cwd(), '../data/cleaned-data')
-    const files = await readdir(dataDir)
-    const artistFile = files
-      .filter(f => f.startsWith('cleaned-artists-') && f.endsWith('.json'))
-      .sort()
-      .pop()
+    const session = await auth()
     
-    if (!artistFile) {
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const userId = session.user.id
+
+    // Find the latest cleaned artists file
+    const files = await listUserFiles(userId, 'cleaned-data')
+    const artistFiles = files
+      .filter(filename => filename.startsWith('cleaned-artists-') && filename.endsWith('.json'))
+      .sort((a, b) => {
+        const timestampA = parseInt(a.match(/cleaned-artists-(\d+)\.json/)?.[1] || '0')
+        const timestampB = parseInt(b.match(/cleaned-artists-(\d+)\.json/)?.[1] || '0')
+        return timestampB - timestampA
+      })
+    
+    if (artistFiles.length === 0) {
       return NextResponse.json({ error: 'Artist data not found' }, { status: 404 })
     }
     
-    const filePath = join(dataDir, artistFile)
-    const fileContents = await readFile(filePath, 'utf-8')
-    const data = JSON.parse(fileContents)
+    const latestArtistFile = artistFiles[0]
+    const fileArrayBuffer = await downloadFile(userId, 'cleaned-data', latestArtistFile)
+    const fileBuffer = Buffer.from(fileArrayBuffer)
+    const data = JSON.parse(fileBuffer.toString('utf-8'))
     
     return NextResponse.json(data)
   } catch (error) {

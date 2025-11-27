@@ -1,5 +1,6 @@
 import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
+import Spotify from 'next-auth/providers/spotify'
 import { supabaseAdmin } from './supabase'
 
 // Generate UUID that works in Edge runtime
@@ -20,11 +21,28 @@ function generateUUID(): string {
 // Saves users/accounts to Supabase PostgreSQL
 // Using JWT sessions for Edge runtime compatibility (middleware)
 
+// Debug: Log environment variables (remove in production)
+if (process.env.NODE_ENV === 'development') {
+  console.log('NextAuth Config - AUTH_URL:', process.env.AUTH_URL)
+  console.log('NextAuth Config - NEXTAUTH_URL:', process.env.NEXTAUTH_URL)
+  console.log('NextAuth Config - AUTH_TRUST_HOST:', process.env.AUTH_TRUST_HOST)
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true, // Trust the host header (needed for Vercel and similar)
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+    Spotify({
+      clientId: process.env.SPOTIFY_CLIENT_ID!,
+      clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          scope: 'user-read-recently-played user-read-email user-read-private',
+        },
+      },
     }),
   ],
   pages: {
@@ -43,57 +61,82 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
 
       try {
-        // Check if user already exists
-        const { data: existingUser } = await supabaseAdmin
-          .from('users')
-          .select('id')
-          .eq('email', user.email)
-          .single()
-
         let userId: string
 
-        if (existingUser) {
-          // User exists, use their ID
-          userId = existingUser.id
-          
-          // Update user info
-          await supabaseAdmin
-            .from('users')
-            .update({
-              name: user.name,
-              image: user.image,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', userId)
-        } else {
-          // Create new user
-          userId = generateUUID()
-          const { error: userError } = await supabaseAdmin
-            .from('users')
-            .insert({
-              id: userId,
-              email: user.email,
-              name: user.name,
-              image: user.image,
-              email_verified: (user as any).emailVerified ? new Date().toISOString() : null,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
+        // For Spotify OAuth, we need to link to existing user (must be logged in with Google first)
+        if (account?.provider === 'spotify') {
+          // Spotify OAuth should only be used for linking, not primary login
+          // Try to find user by email (Spotify should provide email)
+          if (user.email) {
+            const { data: existingUser } = await supabaseAdmin
+              .from('users')
+              .select('id')
+              .eq('email', user.email)
+              .single()
 
-          if (userError) {
-            console.error('Error creating user:', userError)
+            if (existingUser) {
+              userId = existingUser.id
+            } else {
+              console.error('Spotify OAuth: No existing user found with email:', user.email)
+              console.error('Please ensure you are logged in with Google first and that your Spotify email matches your Google email.')
+              return false
+            }
+          } else {
+            console.error('Spotify OAuth: No email provided by Spotify. Cannot link account.')
             return false
+          }
+        } else {
+          // Google OAuth - primary login method
+          // Check if user already exists
+          const { data: existingUser } = await supabaseAdmin
+            .from('users')
+            .select('id')
+            .eq('email', user.email)
+            .single()
+
+          if (existingUser) {
+            // User exists, use their ID
+            userId = existingUser.id
+            
+            // Update user info
+            await supabaseAdmin
+              .from('users')
+              .update({
+                name: user.name,
+                image: user.image,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', userId)
+          } else {
+            // Create new user
+            userId = generateUUID()
+            const { error: userError } = await supabaseAdmin
+              .from('users')
+              .insert({
+                id: userId,
+                email: user.email,
+                name: user.name,
+                image: user.image,
+                email_verified: (user as any).emailVerified ? new Date().toISOString() : null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+
+            if (userError) {
+              console.error('Error creating user:', userError)
+              return false
+            }
           }
         }
 
         // Save or update account (OAuth provider info)
         if (account) {
-          // Check if account already exists
+          // Check if account already exists for this user
           const { data: existingAccount } = await supabaseAdmin
             .from('accounts')
             .select('id')
+            .eq('user_id', userId)
             .eq('provider', account.provider)
-            .eq('provider_account_id', account.providerAccountId)
             .single()
 
           const accountData = {

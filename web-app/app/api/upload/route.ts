@@ -69,18 +69,43 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check file size (Supabase default limit is usually 50MB, but can be configured)
+    const fileSizeMB = file.size / (1024 * 1024)
+    if (fileSizeMB > 50) {
+      return NextResponse.json(
+        { error: `File size (${fileSizeMB.toFixed(2)}MB) exceeds 50MB limit. Please check your Supabase bucket settings.` },
+        { status: 400 }
+      )
+    }
+
     // Convert file to buffer
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
+    console.log(`📤 Uploading ${filename} (${fileSizeMB.toFixed(2)}MB) for user ${userId}`)
+
     // Upload to Supabase Storage
-    const publicUrl = await uploadFile(
-      userId,
-      category as 'raw-history' | 'merged-history' | 'cleaned-data',
-      filename,
-      buffer,
-      file.type || 'application/json'
-    )
+    let publicUrl: string
+    try {
+      publicUrl = await uploadFile(
+        userId,
+        category as 'raw-history' | 'merged-history' | 'cleaned-data',
+        filename,
+        buffer,
+        file.type || 'application/json'
+      )
+      console.log(`✅ Successfully uploaded ${filename}`)
+    } catch (uploadError: any) {
+      console.error(`❌ Failed to upload ${filename}:`, uploadError)
+      // Provide more specific error messages
+      if (uploadError.message?.includes('size') || uploadError.message?.includes('limit')) {
+        return NextResponse.json(
+          { error: `File too large: ${uploadError.message}. Check Supabase bucket size limits.` },
+          { status: 413 }
+        )
+      }
+      throw uploadError
+    }
 
     // Save file metadata to database
     if (supabaseAdmin) {

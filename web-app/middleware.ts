@@ -5,7 +5,13 @@ import type { NextRequest } from 'next/server'
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
   
+  // Force a response header to verify middleware is running (visible in network tab)
+  const response = NextResponse.next()
+  response.headers.set('X-Middleware-Executed', 'true')
+  response.headers.set('X-Middleware-Pathname', pathname)
+  
   // Log EVERY request to confirm middleware is running
+  // Use multiple log methods to ensure visibility
   console.log('[Middleware] START - Processing request:', {
     pathname,
     method: req.method,
@@ -16,6 +22,9 @@ export default async function middleware(req: NextRequest) {
     }
   })
   
+  // Also log to stderr (sometimes more visible)
+  console.error('[Middleware ERROR LOG] START:', pathname)
+  
   // Public routes that don't require authentication
   const publicRoutes = ['/auth/signin', '/auth/signout', '/auth/error', '/api/auth']
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
@@ -23,7 +32,9 @@ export default async function middleware(req: NextRequest) {
   // Skip auth check for public routes
   if (isPublicRoute) {
     console.log('[Middleware] Public route, skipping auth:', pathname)
-    return NextResponse.next()
+    console.error('[Middleware ERROR LOG] Public route:', pathname)
+    response.headers.set('X-Middleware-Public', 'true')
+    return response
   }
 
   // Check authentication for protected routes
@@ -78,19 +89,26 @@ export default async function middleware(req: NextRequest) {
   // If not authenticated, ALWAYS redirect to sign-in
   if (!isAuthenticated) {
     console.log('[Middleware] NOT AUTHENTICATED - Redirecting to sign-in:', pathname)
+    console.error('[Middleware ERROR LOG] NOT AUTHENTICATED - Redirecting:', pathname)
     const signInUrl = new URL('/auth/signin', req.url)
     signInUrl.searchParams.set('callbackUrl', pathname)
-    return NextResponse.redirect(signInUrl)
+    const redirect = NextResponse.redirect(signInUrl)
+    redirect.headers.set('X-Middleware-Redirect', 'true')
+    return redirect
   }
   
   console.log('[Middleware] AUTHENTICATED - Allowing access:', pathname)
+  console.error('[Middleware ERROR LOG] AUTHENTICATED:', pathname)
+  response.headers.set('X-Middleware-Authenticated', 'true')
 
   // If authenticated and trying to access sign-in page, redirect to home
   if (pathname.startsWith('/auth/signin')) {
-    return NextResponse.redirect(new URL('/', req.url))
+    const redirect = NextResponse.redirect(new URL('/', req.url))
+    redirect.headers.set('X-Middleware-Redirect', 'home')
+    return redirect
   }
 
-  return NextResponse.next()
+  return response
 }
 
 export const config = {

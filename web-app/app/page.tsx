@@ -2,14 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { signOut } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import SpotifyStatsLayout from '../components/SpotifyStatsLayout'
 import Highcharts from 'highcharts'
 import HighchartsReact from 'highcharts-react-official'
-import { Music2, Users, Play, Clock, LogOut } from 'lucide-react'
+import { Music2, Users, Play, Clock } from 'lucide-react'
 
 interface YearlyListeningTime {
   year: string
@@ -122,6 +121,7 @@ export default function StatsPage() {
     
     fetchStats()
   }, [])
+
 
   // Prepare chart options for yearly listening hours
   const getChartOptions = (): Highcharts.Options => {
@@ -370,26 +370,12 @@ export default function StatsPage() {
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
   }
   
-  const handleLogout = async () => {
-    await signOut({ callbackUrl: '/auth/signin' })
-  }
-
   return (
     <SpotifyStatsLayout
       title="Spotify Statistics"
       description="Detailed insights into your listening habits"
       currentPage="stats"
     >
-      <div className="flex justify-end mb-4">
-        <Button
-          variant="outline"
-          onClick={handleLogout}
-          className="gap-2"
-        >
-          <LogOut className="w-4 h-4" />
-          Log Out
-        </Button>
-      </div>
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="text-center">

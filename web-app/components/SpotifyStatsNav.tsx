@@ -1,7 +1,7 @@
 import Link from 'next/link'
-import { Disc, Music2, Users, BarChart3 } from 'lucide-react'
+import { Disc, Music2, Users, BarChart3, User } from 'lucide-react'
 
-type SpotifyStatsPage = 'albums' | 'songs' | 'artists' | 'stats'
+type SpotifyStatsPage = 'albums' | 'songs' | 'artists' | 'stats' | 'profile'
 
 interface SpotifyStatsNavProps {
   currentPage: SpotifyStatsPage
@@ -48,10 +48,17 @@ export default function SpotifyStatsNav({ currentPage }: SpotifyStatsNavProps) {
       </Link>
       <Link
         href="/top-artists"
-        className={`${getLinkClasses('artists', false)} sm:rounded-r-md`}
+        className={getLinkClasses('artists', false)}
       >
         <Users className="w-4 h-4" />
         Artists
+      </Link>
+      <Link
+        href="/profile"
+        className={`${getLinkClasses('profile', false)} sm:rounded-r-md`}
+      >
+        <User className="w-4 h-4" />
+        Profile
       </Link>
     </div>
   )

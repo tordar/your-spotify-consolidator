@@ -1,5 +1,7 @@
+'use client'
+
 import './globals.css';
-import { NavigationBar } from '../components/navigation-bar';
+import { SessionProvider } from 'next-auth/react';
 
 export default function RootLayout({
   children,
@@ -9,7 +11,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-dark-bg">
+        <SessionProvider>
           {children}
+        </SessionProvider>
       </body>
     </html>
   );

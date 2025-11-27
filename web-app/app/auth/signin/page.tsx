@@ -16,8 +16,13 @@ function SignInContent() {
     setIsLoading(true)
     setError('')
     try {
-      await signIn('google', { callbackUrl })
-    } catch (err) {
+      // Use NextAuth's signIn function - it handles the OAuth flow properly
+      await signIn('google', { 
+        callbackUrl,
+        redirect: true 
+      })
+    } catch (err: any) {
+      console.error('Sign in error:', err)
       setError('Failed to sign in with Google. Please try again.')
       setIsLoading(false)
     }

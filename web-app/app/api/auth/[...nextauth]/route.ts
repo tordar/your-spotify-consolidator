@@ -1,6 +1,7 @@
 import { handlers } from '@/lib/auth'
-import { NextRequest } from 'next/server'
+import type { NextRequest } from 'next/server'
 
+// Export both GET and POST handlers from NextAuth
 export async function GET(request: NextRequest) {
   return handlers.GET(request)
 }

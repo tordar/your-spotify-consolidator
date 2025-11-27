@@ -363,14 +363,16 @@ export default function ProfilePage() {
             {isGenerating ? 'Generating...' : 'Generate Cleaned Files'}
           </Button>
         </div>
-        <Button
-          variant="outline"
-          onClick={handleLogout}
-          className="gap-2"
-        >
-          <LogOut className="w-4 h-4" />
-          Log Out
-        </Button>
+        {session?.user && (
+          <Button
+            variant="outline"
+            onClick={handleLogout}
+            className="gap-2"
+          >
+            <LogOut className="w-4 h-4" />
+            Log Out
+          </Button>
+        )}
       </div>
 
       {/* Generate Cleaned Files Result */}

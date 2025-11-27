@@ -181,6 +181,8 @@ function generateCleanedSongs(history: CompleteListeningHistory): { songs: Clean
 
   songs.sort((a, b) => b.count - a.count)
   const consolidatedSongs = consolidateSongs(songs)
+  // Re-sort after consolidation since counts may have changed
+  consolidatedSongs.sort((a, b) => b.count - a.count)
   const topSongs = consolidatedSongs.slice(0, 500).map((song, index) => ({
     ...song,
     rank: index + 1
@@ -249,6 +251,8 @@ function generateCleanedArtists(history: CompleteListeningHistory): { artists: C
 
   artists.sort((a, b) => b.count - a.count)
   const consolidatedArtists = consolidateArtists(artists)
+  // Re-sort after consolidation since counts may have changed
+  consolidatedArtists.sort((a, b) => b.count - a.count)
   const topArtists = consolidatedArtists.slice(0, 500).map((artist, index) => ({
     ...artist,
     rank: index + 1
@@ -332,6 +336,8 @@ function generateAlbumsWithSongs(history: CompleteListeningHistory): { albums: A
 
   albumsWithSongs.sort((a, b) => b.count - a.count)
   const consolidatedAlbums = consolidateAlbums(albumsWithSongs)
+  // Re-sort after consolidation since counts may have changed
+  consolidatedAlbums.sort((a, b) => b.count - a.count)
   const rankedAlbums = consolidatedAlbums.slice(0, 500).map((album, index) => ({
     ...album,
     rank: index + 1

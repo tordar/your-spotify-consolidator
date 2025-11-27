@@ -30,6 +30,7 @@ if (process.env.NODE_ENV === 'development') {
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true, // Trust the host header (needed for Vercel and similar)
+  secret: process.env.AUTH_SECRET, // Explicitly set secret
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,

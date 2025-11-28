@@ -21,17 +21,15 @@ function generateUUID(): string {
 // Saves users/accounts to Supabase PostgreSQL
 // Using JWT sessions for Edge runtime compatibility (middleware)
 
-// Debug: Log environment variables (always log in production to debug)
-console.log('[NextAuth Config]', {
-  NODE_ENV: process.env.NODE_ENV,
-  AUTH_URL: process.env.AUTH_URL,
-  NEXTAUTH_URL: process.env.NEXTAUTH_URL,
-  AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
-  VERCEL_URL: process.env.VERCEL_URL,
-  VERCEL_ENV: process.env.VERCEL_ENV,
-  hasAUTH_SECRET: !!process.env.AUTH_SECRET,
-  hasGOOGLE_CLIENT_ID: !!process.env.GOOGLE_CLIENT_ID,
-})
+// Debug: Log environment variables in development only
+if (process.env.NODE_ENV === 'development') {
+  console.log('[NextAuth Config]', {
+    AUTH_URL: process.env.AUTH_URL,
+    NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+    hasAUTH_SECRET: !!process.env.AUTH_SECRET,
+    hasGOOGLE_CLIENT_ID: !!process.env.GOOGLE_CLIENT_ID,
+  })
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true, // Trust the host header (needed for Vercel preview deployments)
@@ -207,14 +205,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // If no token ID, return null to indicate no valid session
       // This ensures middleware correctly identifies unauthenticated users
       if (!token?.id) {
-        console.log('[NextAuth] Session callback: No token.id, returning null')
         return null as any
       }
       // Add user ID to session
       if (session?.user) {
         session.user.id = token.id as string
       }
-      console.log('[NextAuth] Session callback: Valid session with user.id:', session?.user?.id)
       return session
     },
   },

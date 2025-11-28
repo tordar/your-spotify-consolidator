@@ -149,6 +149,8 @@ export async function POST(request: NextRequest) {
 
     const userId = session.user.id
 
+    console.log(`[Merge History] Starting merge process for user ${userId}`)
+
     // Get all raw history files for the user
     const rawHistoryFiles = await listUserFiles(userId, 'raw-history')
     
@@ -203,7 +205,6 @@ export async function POST(request: NextRequest) {
             spotify_track_uri: rawEntry.spotify_track_uri
           }))
 
-        console.log(`✅ Loaded ${entries.length} entries from ${filename}`)
         allEntries.push(...entries)
         processedFiles.push(filename)
       } catch (error: any) {
@@ -251,7 +252,6 @@ export async function POST(request: NextRequest) {
       await deleteUserCategoryFiles(userId, 'merged-history')
     } catch (error) {
       // Ignore errors if no files exist
-      console.log('No old merged files to clean up')
     }
 
     // Save merged data to Supabase Storage
@@ -298,6 +298,8 @@ export async function POST(request: NextRequest) {
           onConflict: 'user_id,category,filename',
         })
     }
+
+    console.log(`[Merge History] Completed: ${consolidatedSongs.length} unique songs from ${processedFiles.length} files`)
 
     return NextResponse.json({
       success: true,

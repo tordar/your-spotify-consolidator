@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { listUserFiles, downloadFile, uploadFile, deleteUserCategoryFiles } from '@/lib/storage'
-import { getSpotifyAccessToken } from '@/lib/spotify-token'
 import { supabaseAdmin } from '@/lib/supabase'
 
 // Generate UUID that works in Edge runtime
@@ -559,6 +558,8 @@ export async function POST(request: NextRequest) {
 
     const userId = session.user.id
 
+    console.log(`[Generate Cleaned Files] Starting generation for user ${userId}`)
+
     // Check if user has Spotify connected (optional but recommended for metadata enrichment)
     let hasSpotify = false
     try {
@@ -590,26 +591,16 @@ export async function POST(request: NextRequest) {
     }
 
     const latestMergedFile = mergedHistoryFiles[0]
-    console.log(`📁 Loading merged history from: ${latestMergedFile}`)
 
     // Download merged history
     const mergedHistoryArrayBuffer = await downloadFile(userId, 'merged-history', latestMergedFile)
     const mergedHistoryBuffer = Buffer.from(mergedHistoryArrayBuffer)
     const mergedHistory: CompleteListeningHistory = JSON.parse(mergedHistoryBuffer.toString('utf-8'))
 
-    console.log(`✅ Loaded ${mergedHistory.songs.length} songs from merged history`)
-
     // Generate cleaned files
-    console.log('🎵 Generating cleaned songs...')
     const songsResult = generateCleanedSongs(mergedHistory)
-    
-    console.log('👤 Generating cleaned artists...')
     const artistsResult = generateCleanedArtists(mergedHistory)
-    
-    console.log('💿 Generating albums with songs...')
     const albumsResult = generateAlbumsWithSongs(mergedHistory)
-    
-    console.log('📊 Calculating detailed statistics...')
     const detailedStats = calculateDetailedStats(mergedHistory)
 
     // TODO: Add Spotify API enrichment if token is available
@@ -623,7 +614,6 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now()
 
     // Upload cleaned files
-    console.log('📤 Uploading cleaned files...')
     
     const songsFile = Buffer.from(JSON.stringify({
       metadata: {
@@ -743,7 +733,6 @@ export async function POST(request: NextRequest) {
       .from('user_files')
       .insert(fileMetadata)
 
-    console.log('✅ All cleaned files generated and uploaded successfully')
 
     return NextResponse.json({
       success: true,
@@ -772,6 +761,8 @@ export async function POST(request: NextRequest) {
         hasSpotifyEnrichment: hasSpotify // Indicate if Spotify enrichment was available
       }
     })
+
+    console.log(`[Generate Cleaned Files] Completed: ${songsResult.songs.length} songs, ${artistsResult.artists.length} artists, ${albumsResult.albums.length} albums`)
 
   } catch (error: any) {
     console.error('Error generating cleaned files:', error)

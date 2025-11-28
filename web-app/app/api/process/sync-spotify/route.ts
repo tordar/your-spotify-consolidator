@@ -130,6 +130,8 @@ export async function POST(request: NextRequest) {
 
     const userId = session.user.id
 
+    console.log(`[Sync Spotify] Starting sync for user ${userId}`)
+
     // Check if user has Spotify connected
     const hasConnected = await hasSpotifyConnected(userId)
     if (!hasConnected) {
@@ -143,7 +145,6 @@ export async function POST(request: NextRequest) {
     const accessToken = await getSpotifyAccessToken(userId)
 
     // Step 1: Check for new tracks
-    console.log('🔍 Checking for new tracks...')
     
     // Get latest merged history file
     const mergedFiles = await listUserFiles(userId, 'merged-history')
@@ -168,7 +169,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch recent plays from Spotify API
-    console.log('🎵 Fetching recent Spotify plays...')
     const response = await fetch('https://api.spotify.com/v1/me/player/recently-played?limit=50', {
       headers: {
         'Authorization': `Bearer ${accessToken}`
@@ -231,7 +231,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 2: Merge recent plays with existing history
-    console.log('🔄 Merging recent plays with history...')
 
     // Load existing merged history if it exists
     let existingSongs = new Map<string, MergedStreamingHistory['songs'][0]>()
@@ -395,6 +394,8 @@ export async function POST(request: NextRequest) {
           onConflict: 'user_id,category,filename',
         })
     }
+
+    console.log(`[Sync Spotify] Completed: ${newPlays.length} new tracks, ${consolidatedSongs.length} total unique songs`)
 
     return NextResponse.json({
       success: true,

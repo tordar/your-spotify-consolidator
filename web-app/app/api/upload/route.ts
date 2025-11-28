@@ -82,7 +82,6 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    console.log(`📤 Uploading ${filename} (${fileSizeMB.toFixed(2)}MB) for user ${userId}`)
 
     // Upload to Supabase Storage
     let publicUrl: string
@@ -94,7 +93,6 @@ export async function POST(request: NextRequest) {
         buffer,
         file.type || 'application/json'
       )
-      console.log(`✅ Successfully uploaded ${filename}`)
     } catch (uploadError: any) {
       console.error(`❌ Failed to upload ${filename}:`, uploadError)
       // Provide more specific error messages

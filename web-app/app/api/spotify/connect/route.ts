@@ -82,14 +82,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to store OAuth state' }, { status: 500 })
   }
 
-  // Debug: Log stored values (remove in production)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Stored OAuth state in database:', { 
-      state,
-      codeVerifier: codeVerifier.substring(0, 10) + '...',
-      expiresAt: expiresAt.toISOString()
-    })
-  }
 
   return NextResponse.redirect(authUrl)
 }

@@ -63,3 +63,6 @@ coverage/
 # Documentation and planning files
 PRODUCT_VISION.md
 Todo.txt
+SAAS_INVESTIGATION.md
+web-app/AUTH_SETUP.md
+setup-tables.sql

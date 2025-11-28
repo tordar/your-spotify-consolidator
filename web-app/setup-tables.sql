@@ -58,7 +58,56 @@ CREATE UNIQUE INDEX IF NOT EXISTS "sessions_session_token_key" ON "sessions"("se
 CREATE UNIQUE INDEX IF NOT EXISTS "verification_tokens_token_key" ON "verification_tokens"("token");
 CREATE UNIQUE INDEX IF NOT EXISTS "verification_tokens_identifier_token_key" ON "verification_tokens"("identifier", "token");
 
--- Create foreign keys
-ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- Create foreign keys (idempotent - only add if they don't exist)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'accounts_user_id_fkey'
+    ) THEN
+        ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_fkey" 
+        FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
+
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'sessions_user_id_fkey'
+    ) THEN
+        ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_fkey" 
+        FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
+
+-- Create user_files table for tracking uploaded files
+CREATE TABLE IF NOT EXISTS "user_files" (
+    "id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "category" TEXT NOT NULL, -- 'raw-history', 'merged-history', 'cleaned-data'
+    "filename" TEXT NOT NULL,
+    "storage_path" TEXT NOT NULL, -- Full path in storage bucket
+    "file_size" INTEGER, -- Size in bytes
+    "content_type" TEXT, -- MIME type
+    "metadata" JSONB, -- Additional metadata (e.g., timestamp, processing status)
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "user_files_pkey" PRIMARY KEY ("id")
+);
+
+-- Create indexes for user_files
+CREATE INDEX IF NOT EXISTS "user_files_user_id_idx" ON "user_files"("user_id");
+CREATE INDEX IF NOT EXISTS "user_files_category_idx" ON "user_files"("category");
+CREATE UNIQUE INDEX IF NOT EXISTS "user_files_user_category_filename_key" ON "user_files"("user_id", "category", "filename");
+
+-- Create foreign key for user_files (idempotent - only add if it doesn't exist)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'user_files_user_id_fkey'
+    ) THEN
+        ALTER TABLE "user_files" ADD CONSTRAINT "user_files_user_id_fkey" 
+        FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 

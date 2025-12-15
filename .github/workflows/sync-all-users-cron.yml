@@ -1,0 +1,33 @@
+name: Sync All Users Spotify Data
+
+on:
+  schedule:
+    # Run every 2 hours
+    - cron: '0 */2 * * *'
+  workflow_dispatch: # Allow manual triggers
+
+jobs:
+  sync-all-users:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Trigger sync endpoint
+        env:
+          # TODO: Add CRON_SECRET_TOKEN to GitHub Secrets
+          # Settings > Secrets and variables > Actions > New repository secret
+          CRON_SECRET_TOKEN: ${{ secrets.CRON_SECRET_TOKEN }}
+          # TODO: Get your Vercel deployment URL
+          # This should be your production URL, e.g., https://your-app.vercel.app
+          VERCEL_URL: ${{ secrets.VERCEL_URL || 'https://your-app.vercel.app' }}
+        run: |
+          # TODO: Make authenticated POST request to cron endpoint
+          # curl -X POST \
+          #   -H "Authorization: Bearer $CRON_SECRET_TOKEN" \
+          #   -H "Content-Type: application/json" \
+          #   "$VERCEL_URL/api/cron/sync-all-users"
+          # 
+          # TODO: Handle response and log results
+          # TODO: Consider retry logic for failed requests
+          # TODO: Add error notification (e.g., email, Slack, etc.)
+          echo "TODO: Implement API call to sync-all-users endpoint"
+

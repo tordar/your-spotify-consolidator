@@ -39,6 +39,7 @@ interface CompleteSong {
   listeningEvents: Array<{
     playedAt: string;
     msPlayed: number;
+    conn_country?: string;
   }>;
 }
 
@@ -89,7 +90,8 @@ class StreamingHistoryMerger {
         existingSong.totalListeningTime += entry.ms_played;
         existingSong.listeningEvents.push({
           playedAt: entry.ts,
-          msPlayed: entry.ms_played
+          msPlayed: entry.ms_played,
+          conn_country: entry.conn_country
         });
       } else {
         songMap.set(songId, {
@@ -114,7 +116,8 @@ class StreamingHistoryMerger {
           totalListeningTime: entry.ms_played,
           listeningEvents: [{
             playedAt: entry.ts,
-            msPlayed: entry.ms_played
+            msPlayed: entry.ms_played,
+            conn_country: entry.conn_country
           }]
         });
       }

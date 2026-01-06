@@ -49,6 +49,7 @@ interface CompleteSong {
   listeningEvents: Array<{
     playedAt: string;
     msPlayed: number;
+    conn_country?: string;
   }>;
 }
 

@@ -19,6 +19,7 @@ import type {
   TopArtist,
   TopAlbum,
   HourlyListeningDistribution,
+  CountryListeningData,
   ArtistTopSong,
   ArtistTopAlbum
 } from './utils/types';
@@ -1578,6 +1579,14 @@ class CleanedFilesGenerator {
       hourlyMap.set(hour, { totalMs: 0, playCount: 0 });
     }
     
+    // Map to track country listening data
+    const countryMap = new Map<string, {
+      totalMs: number;
+      playCount: number;
+      firstPlayedAt: string | null;
+      lastPlayedAt: string | null;
+    }>();
+    
     history.songs.forEach(song => {
       song.listeningEvents.forEach(event => {
         const eventDate = new Date(event.playedAt);
@@ -1588,6 +1597,30 @@ class CleanedFilesGenerator {
         const hourData = hourlyMap.get(hour)!;
         hourData.totalMs += event.msPlayed;
         hourData.playCount += 1;
+        
+        // Update country totals if conn_country is available
+        if (event.conn_country) {
+          const countryCode = event.conn_country;
+          if (!countryMap.has(countryCode)) {
+            countryMap.set(countryCode, {
+              totalMs: 0,
+              playCount: 0,
+              firstPlayedAt: null,
+              lastPlayedAt: null
+            });
+          }
+          const countryData = countryMap.get(countryCode)!;
+          countryData.totalMs += event.msPlayed;
+          countryData.playCount += 1;
+          
+          // Track first and last played dates
+          if (!countryData.firstPlayedAt || event.playedAt < countryData.firstPlayedAt) {
+            countryData.firstPlayedAt = event.playedAt;
+          }
+          if (!countryData.lastPlayedAt || event.playedAt > countryData.lastPlayedAt) {
+            countryData.lastPlayedAt = event.playedAt;
+          }
+        }
         
         // Update yearly totals
         if (!yearlyMap.has(year)) {
@@ -1775,13 +1808,26 @@ class CleanedFilesGenerator {
       }))
       .sort((a, b) => a.hour - b.hour);
     
+    // Convert country map to array and sort by totalMs (descending)
+    const countryListeningData: CountryListeningData[] = Array.from(countryMap.entries())
+      .map(([countryCode, data]) => ({
+        countryCode,
+        totalMsPlayed: data.totalMs,
+        totalHours: Math.round((data.totalMs / (1000 * 60 * 60)) * 100) / 100,
+        playCount: data.playCount,
+        firstPlayedAt: data.firstPlayedAt || '',
+        lastPlayedAt: data.lastPlayedAt || ''
+      }))
+      .sort((a, b) => b.totalMsPlayed - a.totalMsPlayed);
+    
     return {
       yearlyListeningTime,
       yearlyTopItems,
       totalListeningHours,
       totalListeningDays,
       totalListeningEvents,
-      hourlyListeningDistribution
+      hourlyListeningDistribution,
+      countryListeningData
     };
   }
 

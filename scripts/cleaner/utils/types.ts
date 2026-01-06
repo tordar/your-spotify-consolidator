@@ -26,6 +26,7 @@ export interface CompleteSong {
   listeningEvents: Array<{
     playedAt: string;
     msPlayed: number;
+    conn_country?: string;
   }>;
 }
 
@@ -354,6 +355,15 @@ export interface HourlyListeningDistribution {
   playCount: number;
 }
 
+export interface CountryListeningData {
+  countryCode: string;
+  totalMsPlayed: number;
+  totalHours: number;
+  playCount: number;
+  firstPlayedAt: string;
+  lastPlayedAt: string;
+}
+
 export interface DetailedStats {
   yearlyListeningTime: YearlyListeningTime[];
   yearlyTopItems: YearlyTopItems[];
@@ -361,5 +371,6 @@ export interface DetailedStats {
   totalListeningDays: number;
   totalListeningEvents?: number;
   hourlyListeningDistribution: HourlyListeningDistribution[];
+  countryListeningData?: CountryListeningData[];
 }
 

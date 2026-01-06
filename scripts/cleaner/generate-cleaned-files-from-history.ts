@@ -2088,6 +2088,8 @@ class CleanedFilesGenerator {
 
     // Update detailed stats with enriched album images
     let enrichedAlbumCount = 0;
+    const albumsNeedingSearch: Array<{ album: TopAlbum; albumKey: string }> = [];
+    
     detailedStats.yearlyTopItems.forEach(yearData => {
       yearData.topAlbums.forEach(album => {
         const albumKey = `${album.albumName.toLowerCase().trim()}|${album.artist.toLowerCase().trim()}`;
@@ -2095,9 +2097,33 @@ class CleanedFilesGenerator {
         if (images && images.length > 0) {
           album.images = images;
           enrichedAlbumCount++;
+        } else if (!album.images || album.images.length === 0) {
+          albumsNeedingSearch.push({ album, albumKey });
         }
       });
     });
+
+    // Fallback: search for albums missing images
+    if (albumsNeedingSearch.length > 0) {
+      console.log(`   Searching for ${albumsNeedingSearch.length} albums missing images...`);
+      const accessToken = await this.tokenManager!.getValidAccessToken();
+      let searchedCount = 0;
+      
+      for (const { album, albumKey } of albumsNeedingSearch) {
+        const spotifyAlbum = await this.spotifyApiClient.searchAlbum(accessToken, album.albumName, album.artist);
+        if (spotifyAlbum?.images && spotifyAlbum.images.length > 0) {
+          album.images = spotifyAlbum.images;
+          albumKeyToImages.set(albumKey, spotifyAlbum.images);
+          enrichedAlbumCount++;
+          searchedCount++;
+        }
+        await new Promise(resolve => setTimeout(resolve, 100)); // Rate limiting
+      }
+      
+      if (searchedCount > 0) {
+        console.log(`   ✅ Found images for ${searchedCount} albums via search`);
+      }
+    }
 
     console.log(`✅ Enriched ${enrichedSongCount} songs with images`);
     console.log(`✅ Enriched ${enrichedAlbumCount} albums with images`);

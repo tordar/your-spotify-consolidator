@@ -6478,14 +6478,6 @@
     },
     {
       "artistName": "The Beatles",
-      "baseAlbumName": "Sgt. Pepper's Lonely Hearts Club Band",
-      "variations": [
-        "sgt. pepper's lonely hearts club band (remastered)",
-        "sgt. pepper's lonely hearts club band (remastered)"
-      ]
-    },
-    {
-      "artistName": "The Beatles",
       "baseAlbumName": "Abbey Road",
       "variations": [
         "abbey road (remastered)",
@@ -10203,15 +10195,6 @@
     },
     {
       "artistName": "The Beatles",
-      "baseAlbumName": "Sgt. Pepper's Lonely Hearts Club Band",
-      "variations": [
-        "sgt. pepper's lonely hearts club band (remastered)",
-        "sgt. pepper's lonely hearts club band (remastered)",
-        "sgt. pepper's lonely hearts club band (deluxe edition)"
-      ]
-    },
-    {
-      "artistName": "The Beatles",
       "baseAlbumName": "Revolver",
       "variations": [
         "revolver (remastered)",
@@ -10318,15 +10301,6 @@
         "the velvet undergroun & nico (45th anniversary / super deluxe edition)",
         "the velvet underground & nico 45th anniversary (super deluxe edition)",
         "the velvet underground & nico 45th anniversary (deluxe edition)"
-      ]
-    },
-    {
-      "artistName": "The Velvet Underground",
-      "baseAlbumName": "The Velvet Underground",
-      "variations": [
-        "the velvet underground (45th anniversary / deluxe edition)",
-        "the velvet underground (45th anniversary)",
-        "the velvet underground"
       ]
     },
     {
@@ -13092,14 +13066,6 @@
       "variations": [
         "rubber soul (remastered)",
         "rubber soul (remastered)"
-      ]
-    },
-    {
-      "artistName": "The Beatles",
-      "baseAlbumName": "Sgt. Pepper's Lonely Hearts Club Band",
-      "variations": [
-        "sgt. pepper's lonely hearts club band (remastered)",
-        "sgt. pepper's lonely hearts club band (remastered)"
       ]
     },
     {
@@ -16780,15 +16746,6 @@
       "variations": [
         "the beatles (remastered)",
         "the beatles"
-      ]
-    },
-    {
-      "artistName": "The Beatles",
-      "baseAlbumName": "Sgt. Pepper's Lonely Hearts Club Band",
-      "variations": [
-        "sgt. pepper's lonely hearts club band (remastered)",
-        "sgt. pepper's lonely hearts club band (remastered)",
-        "sgt. pepper's lonely hearts club band (deluxe edition)"
       ]
     },
     {
@@ -24290,7 +24247,8 @@
       "baseAlbumName": "Sgt. Pepper's Lonely Hearts Club Band",
       "variations": [
         "sgt. pepper's lonely hearts club band (remastered)",
-        "sgt. pepper's lonely hearts club band (remastered)"
+        "sgt. pepper's lonely hearts club band (deluxe edition)",
+        "sgt. pepper's lonely hearts club band (super deluxe edition)"
       ]
     },
     {
@@ -27957,15 +27915,6 @@
       "variations": [
         "the beatles (remastered)",
         "the beatles"
-      ]
-    },
-    {
-      "artistName": "The Beatles",
-      "baseAlbumName": "Sgt. Pepper's Lonely Hearts Club Band",
-      "variations": [
-        "sgt. pepper's lonely hearts club band (remastered)",
-        "sgt. pepper's lonely hearts club band (remastered)",
-        "sgt. pepper's lonely hearts club band (deluxe edition)"
       ]
     },
     {

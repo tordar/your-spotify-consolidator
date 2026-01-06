@@ -138,6 +138,32 @@ export class SpotifyApiClient {
   }
 
   /**
+   * Search for albums by name and artist
+   */
+  async searchAlbum(accessToken: string, albumName: string, artistName: string): Promise<SpotifyAlbum | null> {
+    try {
+      const query = encodeURIComponent(`album:"${albumName}" artist:"${artistName}"`);
+      const response = await this.fetchWithRetry(
+        `https://api.spotify.com/v1/search?q=${query}&type=album&limit=1`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        }
+      );
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const data = await response.json() as { albums: { items: SpotifyAlbum[] } };
+      return data.albums?.items?.[0] || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
    * Fetch artist metadata from Spotify API (up to 50 artists at a time)
    */
   async fetchArtists(accessToken: string, artistIds: string[]): Promise<Map<string, SpotifyArtist>> {

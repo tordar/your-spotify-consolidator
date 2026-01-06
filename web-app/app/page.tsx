@@ -699,7 +699,6 @@ export default function StatsPage() {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Globe className="w-5 h-5 text-muted-foreground" />
                         <CardTitle>Listening by Country</CardTitle>
                       </div>
                       <div className="flex items-center gap-2">

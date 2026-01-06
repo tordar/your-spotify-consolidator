@@ -7,8 +7,9 @@ import { Badge } from '@/components/ui/badge'
 import SpotifyStatsLayout from '../components/SpotifyStatsLayout'
 import Highcharts from 'highcharts'
 import HighchartsReact from 'highcharts-react-official'
-import { Music2, Users, Play, Clock } from 'lucide-react'
+import { Music2, Users, Play, Clock, Globe } from 'lucide-react'
 import { StatsSkeleton } from '@/components/SkeletonLoader'
+import { getCountryName } from '@/lib/country-names'
 
 interface YearlyListeningTime {
   year: string
@@ -57,6 +58,15 @@ interface YearlyTopItems {
   }>
 }
 
+interface CountryListeningData {
+  countryCode: string
+  totalMsPlayed: number
+  totalHours: number
+  playCount: number
+  firstPlayedAt: string
+  lastPlayedAt: string
+}
+
 interface StatsData {
   metadata?: {
     timestamp: string
@@ -69,6 +79,7 @@ interface StatsData {
     totalListeningDays: number
     totalListeningEvents?: number
     hourlyListeningDistribution?: HourlyListeningDistribution[]
+    countryListeningData?: CountryListeningData[]
   }
 }
 
@@ -85,6 +96,8 @@ export default function StatsPage() {
   const [loading, setLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
   const [selectedYear, setSelectedYear] = useState<string | null>(null)
+  const [countrySortBy, setCountrySortBy] = useState<'hours' | 'plays' | 'name'>('hours')
+  const [countriesExpanded, setCountriesExpanded] = useState(false)
   const chartComponentRef = useRef<HighchartsReact.RefObject>(null)
   const hourlyChartComponentRef = useRef<HighchartsReact.RefObject>(null)
   
@@ -368,6 +381,32 @@ export default function StatsPage() {
     const minutes = totalMinutes % 60
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
   }
+
+  // Get sorted countries based on sort option
+  const getSortedCountries = () => {
+    if (!statsData?.stats?.countryListeningData) return []
+    
+    const countries = statsData.stats.countryListeningData
+      .filter(country => country.countryCode !== 'ZZ')
+      .map(country => ({
+        ...country,
+        countryName: getCountryName(country.countryCode),
+        percentage: (country.totalHours / statsData.stats.totalListeningHours) * 100
+      }))
+    
+    return [...countries].sort((a, b) => {
+      switch (countrySortBy) {
+        case 'hours':
+          return b.totalHours - a.totalHours
+        case 'plays':
+          return b.playCount - a.playCount
+        case 'name':
+          return a.countryName.localeCompare(b.countryName)
+        default:
+          return b.totalHours - a.totalHours
+      }
+    })
+  }
   
   return (
     <SpotifyStatsLayout
@@ -650,6 +689,127 @@ export default function StatsPage() {
                         />
                       )}
                     </div>
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {/* Country Listening Data */}
+              {statsData.stats?.countryListeningData && statsData.stats.countryListeningData.length > 0 ? (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Globe className="w-5 h-5 text-muted-foreground" />
+                        <CardTitle>Listening by Country</CardTitle>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Sort by:</span>
+                        <select
+                          value={countrySortBy}
+                          onChange={(e) => setCountrySortBy(e.target.value as 'hours' | 'plays' | 'name')}
+                          className="text-xs bg-muted border border-border rounded px-2 py-1 text-foreground"
+                        >
+                          <option value="hours">Hours</option>
+                          <option value="plays">Plays</option>
+                          <option value="name">Name</option>
+                        </select>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Desktop Table Header */}
+                    <div className="hidden md:grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-muted-foreground border-b">
+                      <div className="col-span-1">#</div>
+                      <div className="col-span-3">Country</div>
+                      <div className="col-span-2">Date Range</div>
+                      <div className="col-span-2">Hours</div>
+                      <div className="col-span-2">Plays</div>
+                      <div className="col-span-2">Percentage</div>
+                    </div>
+                    
+                    {/* Country List */}
+                    <div className="space-y-1">
+                      {getSortedCountries()
+                        .slice(0, countriesExpanded ? undefined : 5)
+                        .map((country, index) => {
+                        const percentage = country.percentage.toFixed(1)
+                        const firstYear = new Date(country.firstPlayedAt).getFullYear()
+                        const lastYear = new Date(country.lastPlayedAt).getFullYear()
+                        const dateRange = firstYear === lastYear ? `${firstYear}` : `${firstYear} - ${lastYear}`
+                        
+                        return (
+                          <div
+                            key={country.countryCode}
+                            className="p-2 md:p-3 rounded-md hover:bg-muted/50 transition-colors"
+                          >
+                            {/* Desktop Layout */}
+                            <div className="hidden md:grid grid-cols-12 gap-2 items-center">
+                              <div className="col-span-1">
+                                <Badge variant="secondary" className="text-xs w-8 flex-shrink-0 justify-center">
+                                  {index + 1}
+                                </Badge>
+                              </div>
+                              <div className="col-span-3">
+                                <p className="font-medium text-sm">{country.countryName}</p>
+                              </div>
+                              <div className="col-span-2">
+                                <p className="text-xs text-muted-foreground">{dateRange}</p>
+                              </div>
+                              <div className="col-span-2 flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-muted-foreground" />
+                                <span className="text-sm">{country.totalHours.toLocaleString(undefined, { maximumFractionDigits: 1 })}h</span>
+                              </div>
+                              <div className="col-span-2 flex items-center gap-1">
+                                <Play className="w-3 h-3 text-muted-foreground" />
+                                <span className="text-sm">{country.playCount.toLocaleString()}</span>
+                              </div>
+                              <div className="col-span-2">
+                                <span className="text-sm text-muted-foreground">{percentage}%</span>
+                              </div>
+                            </div>
+                            
+                            {/* Mobile Layout */}
+                            <div className="md:hidden flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <Badge variant="secondary" className="text-xs w-8 flex-shrink-0 justify-center">
+                                  {index + 1}
+                                </Badge>
+                                <div>
+                                  <p className="font-medium text-sm">{country.countryName}</p>
+                                  <p className="text-xs text-muted-foreground">{dateRange}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                <div className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  <span>{country.totalHours.toLocaleString(undefined, { maximumFractionDigits: 1 })}h</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Play className="w-3 h-3" />
+                                  <span>{country.playCount.toLocaleString()}</span>
+                                </div>
+                                <span>{percentage}%</span>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    
+                    {/* Expand/Collapse Button */}
+                    {getSortedCountries().length > 5 && (
+                      <div className="mt-4 pt-4 border-t flex justify-center">
+                        <button
+                          onClick={() => setCountriesExpanded(!countriesExpanded)}
+                          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {countriesExpanded 
+                            ? `Show less (${getSortedCountries().length - 5} hidden)`
+                            : `Show ${getSortedCountries().length - 5} more countries`
+                          }
+                        </button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ) : null}

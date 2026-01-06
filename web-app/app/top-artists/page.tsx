@@ -14,6 +14,7 @@ import FilterSortToggle, { SortOption } from '@/components/FilterSortToggle'
 import RankingMovement from '@/components/RankingMovement'
 import { useSpotifyStats } from '@/components/SpotifyStatsContext'
 import { GridSkeleton, ListSkeleton } from '@/components/SkeletonLoader'
+import { getYearsOfListeningHistory, type DetailedStats } from '@/lib/utils'
 
 interface ArtistImage {
   height: number
@@ -169,6 +170,7 @@ const getCSSVariable = (variable: string): string => {
 
 export default function TopArtistsPage() {
   const [artistsData, setArtistsData] = useState<ArtistsData | null>(null)
+  const [detailedStats, setDetailedStats] = useState<DetailedStats | null>(null)
   const { searchTerm, setSearchTerm, viewMode, setViewMode } = useSpotifyStats()
   const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState<SortOption>('plays')
@@ -215,7 +217,22 @@ export default function TopArtistsPage() {
       }
     }
     
+    const fetchDetailedStats = async () => {
+      try {
+        const response = await fetch('/api/data/stats', {
+          cache: 'no-cache'
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setDetailedStats(data)
+        }
+      } catch (error) {
+        console.error('Error fetching detailed stats:', error)
+      }
+    }
+    
     fetchArtists()
+    fetchDetailedStats()
   }, [])
   
   // Helper function to get plays in past 30 days
@@ -384,7 +401,10 @@ export default function TopArtistsPage() {
   return (
     <SpotifyStatsLayout
       title="My Top Artists"
-      description={loading ? 'Loading...' : `From ${artistsData?.metadata.consolidatedTotalArtists} different artists from the past 15 years`}
+      description={loading ? 'Loading...' : (() => {
+        const years = getYearsOfListeningHistory(detailedStats)
+        return `From ${artistsData?.metadata.consolidatedTotalArtists} different artists from ${years} ${years === 1 ? 'year' : 'years'} of listening history`
+      })()}
       currentPage="artists"
       additionalControls={
         <div className="flex items-center gap-2">

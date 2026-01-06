@@ -14,6 +14,7 @@ import FilterSortToggle, { SortOption } from '@/components/FilterSortToggle'
 import RankingMovement from '@/components/RankingMovement'
 import { useSpotifyStats } from '@/components/SpotifyStatsContext'
 import { GridSkeleton, ListSkeleton } from '@/components/SkeletonLoader'
+import { getYearsOfListeningHistory, type DetailedStats } from '@/lib/utils'
 
 interface AlbumImage {
   height: number
@@ -197,6 +198,7 @@ const LazyAlbumImage = ({ album, rank, size = 'default' }: { album: AlbumInfo; r
 
 export default function TopAlbumsPage() {
   const [albumsData, setAlbumsData] = useState<AlbumsData | null>(null)
+  const [detailedStats, setDetailedStats] = useState<DetailedStats | null>(null)
   const { searchTerm, setSearchTerm, viewMode, setViewMode } = useSpotifyStats()
   const [loading, setLoading] = useState(true)
   const [selectedAlbum, setSelectedAlbum] = useState<AlbumData | null>(null)
@@ -248,7 +250,22 @@ export default function TopAlbumsPage() {
       }
     }
     
+    const fetchDetailedStats = async () => {
+      try {
+        const response = await fetch('/api/data/stats', {
+          cache: 'no-cache'
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setDetailedStats(data)
+        }
+      } catch (error) {
+        console.error('Error fetching detailed stats:', error)
+      }
+    }
+    
     fetchAlbums()
+    fetchDetailedStats()
   }, [])
   
   // Helper function to get plays in past 30 days
@@ -448,7 +465,10 @@ export default function TopAlbumsPage() {
   return (
     <SpotifyStatsLayout
       title="My Top Albums"
-      description={loading ? 'Loading...' : `From ${albumsData?.metadata.originalTotalAlbums} different albums from the past 15 years`}
+      description={loading ? 'Loading...' : (() => {
+        const years = getYearsOfListeningHistory(detailedStats)
+        return `From ${albumsData?.metadata.originalTotalAlbums} different albums from ${years} ${years === 1 ? 'year' : 'years'} of listening history`
+      })()}
       currentPage="albums"
       additionalControls={
         <div className="flex items-center gap-2">

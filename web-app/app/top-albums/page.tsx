@@ -467,7 +467,7 @@ export default function TopAlbumsPage() {
       title="My Top Albums"
       description={loading ? 'Loading...' : (() => {
         const years = getYearsOfListeningHistory(detailedStats)
-        return `From ${albumsData?.metadata.originalTotalAlbums} different albums from ${years} ${years === 1 ? 'year' : 'years'} of listening history`
+        return `From ${albumsData?.metadata.originalTotalAlbums} different albums across ${years} ${years === 1 ? 'year' : 'years'} of listening history`
       })()}
       currentPage="albums"
       additionalControls={

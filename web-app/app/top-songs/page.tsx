@@ -369,7 +369,7 @@ export default function TopSongsPage() {
       title="My Top Songs"
       description={loading ? 'Loading...' : (() => {
         const years = getYearsOfListeningHistory(detailedStats)
-        return `From ${songsData?.metadata.consolidatedTotalSongs} different songs from ${years} ${years === 1 ? 'year' : 'years'} of listening history`
+        return `From ${songsData?.metadata.consolidatedTotalSongs} different songs across ${years} ${years === 1 ? 'year' : 'years'} of listening history`
       })()}
       currentPage="songs"
       additionalControls={

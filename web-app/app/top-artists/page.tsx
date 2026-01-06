@@ -403,7 +403,7 @@ export default function TopArtistsPage() {
       title="My Top Artists"
       description={loading ? 'Loading...' : (() => {
         const years = getYearsOfListeningHistory(detailedStats)
-        return `From ${artistsData?.metadata.consolidatedTotalArtists} different artists from ${years} ${years === 1 ? 'year' : 'years'} of listening history`
+        return `From ${artistsData?.metadata.consolidatedTotalArtists} different artists across ${years} ${years === 1 ? 'year' : 'years'} of listening history`
       })()}
       currentPage="artists"
       additionalControls={

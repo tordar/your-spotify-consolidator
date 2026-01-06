@@ -96,7 +96,6 @@ export default function StatsPage() {
   const [loading, setLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
   const [selectedYear, setSelectedYear] = useState<string | null>(null)
-  const [countrySortBy, setCountrySortBy] = useState<'hours' | 'plays' | 'name'>('hours')
   const [countriesExpanded, setCountriesExpanded] = useState(false)
   const chartComponentRef = useRef<HighchartsReact.RefObject>(null)
   const hourlyChartComponentRef = useRef<HighchartsReact.RefObject>(null)
@@ -382,7 +381,7 @@ export default function StatsPage() {
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
   }
 
-  // Get sorted countries based on sort option
+  // Get sorted countries (sorted by hours, descending)
   const getSortedCountries = () => {
     if (!statsData?.stats?.countryListeningData) return []
     
@@ -394,18 +393,7 @@ export default function StatsPage() {
         percentage: (country.totalHours / statsData.stats.totalListeningHours) * 100
       }))
     
-    return [...countries].sort((a, b) => {
-      switch (countrySortBy) {
-        case 'hours':
-          return b.totalHours - a.totalHours
-        case 'plays':
-          return b.playCount - a.playCount
-        case 'name':
-          return a.countryName.localeCompare(b.countryName)
-        default:
-          return b.totalHours - a.totalHours
-      }
-    })
+    return [...countries].sort((a, b) => b.totalHours - a.totalHours)
   }
   
   return (
@@ -697,23 +685,7 @@ export default function StatsPage() {
               {statsData.stats?.countryListeningData && statsData.stats.countryListeningData.length > 0 ? (
                 <Card>
                   <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <CardTitle>Listening by Country</CardTitle>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Sort by:</span>
-                        <select
-                          value={countrySortBy}
-                          onChange={(e) => setCountrySortBy(e.target.value as 'hours' | 'plays' | 'name')}
-                          className="text-xs bg-muted border border-border rounded px-2 py-1 text-foreground"
-                        >
-                          <option value="hours">Hours</option>
-                          <option value="plays">Plays</option>
-                          <option value="name">Name</option>
-                        </select>
-                      </div>
-                    </div>
+                    <CardTitle>Listening by Country</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {/* Desktop Table Header */}

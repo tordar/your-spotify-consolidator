@@ -12,6 +12,7 @@ import type {
   AlbumSong,
   SpotifyTrack,
   SpotifyAlbum,
+  SpotifyArtist,
   DetailedStats,
   YearlyListeningTime,
   YearlyTopItems,
@@ -554,6 +555,189 @@ class CleanedFilesGenerator {
       originalCount: artists.length,
       consolidatedCount: updatedConsolidatedArtists.length
     };
+  }
+
+  /**
+   * Generate lightweight artist-genre data for network analysis
+   * Includes all artists with play count >= minPlayCount
+   */
+  private generateAllArtistsGenres(
+    history: CompleteListeningHistory,
+    minPlayCount: number = 10
+  ): Array<{ name: string; play_count: number; genres: string[]; songId: string }> {
+    console.log(`🎵 Generating all artists genres (min ${minPlayCount} plays)...`);
+
+    const artistMap = new Map<string, { 
+      playCount: number; 
+      genres: Set<string>;
+      representativeSongId: string;
+      mostRecentPlayTime: number;
+    }>();
+
+    history.songs.forEach(song => {
+      const artistName = song.artist.name;
+      
+      if (!artistMap.has(artistName)) {
+        // Find most recent play time for this song
+        let mostRecentTime = 0;
+        if (song.listeningEvents && song.listeningEvents.length > 0) {
+          const lastEvent = song.listeningEvents[song.listeningEvents.length - 1];
+          mostRecentTime = new Date(lastEvent.playedAt).getTime();
+        }
+        
+        artistMap.set(artistName, {
+          playCount: 0,
+          genres: new Set(song.artist.genres || []),
+          representativeSongId: song.songId,
+          mostRecentPlayTime: mostRecentTime
+        });
+      }
+      
+      const artistData = artistMap.get(artistName)!;
+      artistData.playCount += song.playCount;
+      
+      // Merge genres from all songs by this artist
+      if (song.artist.genres && song.artist.genres.length > 0) {
+        song.artist.genres.forEach(genre => artistData.genres.add(genre));
+      }
+      
+      // Update representative song if this one is more recent
+      if (song.listeningEvents && song.listeningEvents.length > 0) {
+        const lastEvent = song.listeningEvents[song.listeningEvents.length - 1];
+        const lastEventTime = new Date(lastEvent.playedAt).getTime();
+        if (lastEventTime > artistData.mostRecentPlayTime) {
+          artistData.mostRecentPlayTime = lastEventTime;
+          artistData.representativeSongId = song.songId;
+        }
+      }
+    });
+
+    const allArtists = Array.from(artistMap.entries())
+      .filter(([_, data]) => data.playCount >= minPlayCount)
+      .map(([name, data]) => ({
+        name,
+        play_count: data.playCount,
+        genres: Array.from(data.genres),
+        songId: data.representativeSongId
+      }))
+      .sort((a, b) => b.play_count - a.play_count);
+
+    console.log(`✅ Generated ${allArtists.length} artists (min ${minPlayCount} plays)`);
+    return allArtists;
+  }
+
+  /**
+   * Enrich all artists genres with metadata from Spotify API
+   */
+  private async enrichAllArtistsGenres(
+    artists: Array<{ name: string; play_count: number; genres: string[]; songId: string }>,
+    existingArtists: Map<string, CleanedArtist>
+  ): Promise<Array<{ name: string; play_count: number; genres: string[] }>> {
+    if (!this.tokenManager) {
+      console.log('ℹ️  Skipping genre enrichment (Spotify tokens not available)');
+      return artists.map(({ songId, ...rest }) => rest);
+    }
+
+    console.log('\n📥 Enriching all artists genres from Spotify API...');
+    
+    // Filter artists that need enrichment (empty genres or not in existing)
+    const artistsNeedingEnrichment = artists.filter(artist => {
+      const nameKey = artist.name.toLowerCase().trim();
+      const existing = existingArtists.get(nameKey);
+      return !existing || !existing.artist.genres || existing.artist.genres.length === 0;
+    });
+
+    if (artistsNeedingEnrichment.length === 0) {
+      console.log('✅ All artists already have genres, skipping API calls');
+      return artists.map(({ songId, ...rest }) => rest);
+    }
+
+    // First, try to copy genres from existing artists
+    artists.forEach(artist => {
+      const nameKey = artist.name.toLowerCase().trim();
+      const existing = existingArtists.get(nameKey);
+      if (existing && existing.artist.genres && existing.artist.genres.length > 0) {
+        artist.genres = existing.artist.genres;
+      }
+    });
+
+    // Get remaining artists that still need enrichment
+    const stillNeedingEnrichment = artistsNeedingEnrichment.filter(artist => 
+      !artist.genres || artist.genres.length === 0
+    );
+
+    if (stillNeedingEnrichment.length === 0) {
+      console.log('✅ All artists enriched from existing data');
+      return artists.map(({ songId, ...rest }) => rest);
+    }
+
+    const accessToken = await this.tokenManager.getValidAccessToken();
+    const songIds = stillNeedingEnrichment.map(artist => artist.songId).filter(id => id);
+    const uniqueSongIds = Array.from(new Set(songIds));
+
+    console.log(`   Fetching ${uniqueSongIds.length} unique tracks to get artist IDs (${artists.length - uniqueSongIds.length} already have genres)...`);
+    
+    // Fetch tracks in batches
+    const trackMap = new Map<string, SpotifyTrack>();
+    const batchSize = 50;
+    for (let i = 0; i < uniqueSongIds.length; i += batchSize) {
+      const batch = uniqueSongIds.slice(i, i + batchSize);
+      const tracks = await this.spotifyApiClient.fetchTracks(accessToken, batch);
+      tracks.forEach(track => trackMap.set(track.id, track));
+      
+      if (i + batchSize < uniqueSongIds.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    
+    console.log(`✅ Fetched ${trackMap.size} tracks`);
+
+    // Extract artist IDs from tracks
+    const artistIds = new Set<string>();
+    const songIdToArtistId = new Map<string, string>();
+    trackMap.forEach(track => {
+      if (track.artists && track.artists.length > 0) {
+        const artistId = track.artists[0].id;
+        if (artistId) {
+          artistIds.add(artistId);
+          songIdToArtistId.set(track.id, artistId);
+        }
+      }
+    });
+
+    console.log(`   Found ${artistIds.size} unique artist IDs, fetching artist metadata...`);
+    
+    // Fetch artists in batches
+    const artistsMap = new Map<string, SpotifyArtist>();
+    const artistIdsArray = Array.from(artistIds);
+    for (let i = 0; i < artistIdsArray.length; i += batchSize) {
+      const batch = artistIdsArray.slice(i, i + batchSize);
+      const batchArtists = await this.spotifyApiClient.fetchArtists(accessToken, batch);
+      batchArtists.forEach((artist, id) => artistsMap.set(id, artist));
+      
+      if (i + batchSize < artistIdsArray.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    
+    console.log(`✅ Fetched ${artistsMap.size} artists`);
+
+    // Update artists with genres
+    let enrichedCount = 0;
+    artists.forEach(artist => {
+      if (!artist.genres || artist.genres.length === 0) {
+        const artistId = songIdToArtistId.get(artist.songId);
+        const spotifyArtist = artistId ? artistsMap.get(artistId) : null;
+        
+        if (spotifyArtist && spotifyArtist.genres && spotifyArtist.genres.length > 0) {
+          artist.genres = spotifyArtist.genres;
+          enrichedCount++;
+        }
+      }
+    });
+
+    console.log(`✅ Enriched ${enrichedCount} artists with genres`);
+    return artists.map(({ songId, ...rest }) => rest);
   }
 
   /**
@@ -2207,10 +2391,13 @@ class CleanedFilesGenerator {
       const songsResult = this.generateCleanedSongs(history);
       const artistsResult = this.generateCleanedArtists(history);
       const albumsWithSongsResult = this.generateAlbumsWithSongs(history);
+      const allArtistsGenresWithSongIds = this.generateAllArtistsGenres(history, 10);
       
       const existingFiles = this.fileOps.loadExistingCleanedFiles();
       
       await this.initializeSpotifyToken();
+      
+      let allArtistsGenres: Array<{ name: string; play_count: number; genres: string[] }>;
       
       if (this.tokenManager) {
         console.log('\n🎵 Enriching cleaned files with Spotify metadata...');
@@ -2218,6 +2405,9 @@ class CleanedFilesGenerator {
         artistsResult.artists = await this.enrichArtistsWithMetadata(artistsResult.artists, existingFiles.artists);
         artistsResult.artists = await this.enrichArtistTopSongsAndAlbums(artistsResult.artists, existingFiles.artists);
         albumsWithSongsResult.albums = await this.enrichAlbumsWithSongsMetadata(albumsWithSongsResult.albums, existingFiles.albumsWithSongs);
+        
+        // Enrich all artists genres after top artists are enriched (to reuse existing data)
+        allArtistsGenres = await this.enrichAllArtistsGenres(allArtistsGenresWithSongIds, existingFiles.artists);
         
         // Create a map of enriched albums for lookup (from albumsWithSongs) for detailed stats enrichment
         const enrichedAlbumsMap = new Map<string, CleanedAlbum>();
@@ -2293,9 +2483,12 @@ class CleanedFilesGenerator {
         
         enrichedStats = await this.enrichDetailedStatsWithSongImages(enrichedStats, enrichedSongsMap, enrichedAlbumsMap);
         detailedStats = enrichedStats;
+      } else {
+        // If no token manager, just remove songId
+        allArtistsGenres = allArtistsGenresWithSongIds.map(({ songId, ...rest }) => rest);
       }
       
-      const timestamp = await this.fileOps.saveCleanedFiles(songsResult, artistsResult, albumsWithSongsResult.albums, albumsWithSongsResult.originalCount, history, detailedStats);
+      const timestamp = await this.fileOps.saveCleanedFiles(songsResult, artistsResult, albumsWithSongsResult.albums, albumsWithSongsResult.originalCount, history, detailedStats, allArtistsGenres);
       
       console.log('');
       console.log('🎉 All cleaned files generated successfully!');

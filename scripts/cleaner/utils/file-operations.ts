@@ -162,7 +162,8 @@ export class FileOperations {
         /^cleaned-songs-\d+\.json$/,
         /^cleaned-artists-\d+\.json$/,
         /^cleaned-albums-with-songs-\d+\.json$/,
-        /^detailed-stats-\d+\.json$/
+        /^detailed-stats-\d+\.json$/,
+        /^all-artists-genres-\d+\.json$/
       ];
 
       let deletedCount = 0;
@@ -189,6 +190,7 @@ export class FileOperations {
     originalAlbumsCount: number,
     history: CompleteListeningHistory,
     detailedStats: DetailedStats,
+    allArtistsGenres: Array<{ name: string; play_count: number; genres: string[] }>,
     timestamp?: number
   ): Promise<number> {
     if (!fs.existsSync('data/cleaned-data')) {
@@ -250,6 +252,18 @@ export class FileOperations {
       },
       stats: detailedStats
     }, null, 2));
+
+    // Save all artists genres file (lightweight for network analysis)
+    const allArtistsGenresFile = `data/cleaned-data/all-artists-genres-${fileTimestamp}.json`;
+    fs.writeFileSync(allArtistsGenresFile, JSON.stringify({
+      metadata: {
+        totalArtists: allArtistsGenres.length,
+        minPlayCount: 10,
+        timestamp: new Date().toISOString(),
+        source: 'Merged Streaming History'
+      },
+      artists: allArtistsGenres
+    }, null, 2));
     
     // Verify detailed stats file
     let songsWithImages = 0;
@@ -275,6 +289,7 @@ export class FileOperations {
     console.log(`- Artists: ${artistsFile}`);
     console.log(`- Albums with Songs: ${albumsWithSongsFile}`);
     console.log(`- Detailed Stats: ${statsFile}`);
+    console.log(`- All Artists Genres: ${allArtistsGenresFile}`);
 
     const shouldUpload = process.env.UPLOAD_TO_VERCEL_BLOB !== 'false';
     if (shouldUpload) {

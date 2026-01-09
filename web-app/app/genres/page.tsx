@@ -38,8 +38,8 @@ interface GenreLink {
 export default function GenresPage() {
   const [genresData, setGenresData] = useState<GenresData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [minGenreCount, setMinGenreCount] = useState(5)
-  const [minCoOccurrence, setMinCoOccurrence] = useState(2)
+  const [minGenreCount, setMinGenreCount] = useState(8)
+  const [minCoOccurrence, setMinCoOccurrence] = useState(8)
   const chartRef = useRef<HighchartsReact.RefObject>(null)
 
   useEffect(() => {
@@ -397,8 +397,8 @@ export default function GenresPage() {
       description={`${genresData.metadata.totalArtists.toLocaleString()} artists with minimum ${genresData.metadata.minPlayCount} plays`}
       currentPage="genres"
     >
-      <div className="w-full px-4 py-8">
-        <div className="max-w-7xl mx-auto mb-6 space-y-4">
+      <div className="w-full">
+        <div className="max-w-7xl mx-auto px-4 mb-6 space-y-4">
           {/* Explanation */}
           <div className="bg-card/40 border rounded-lg p-4 mb-4">
             <h3 className="text-lg font-semibold mb-2">How it works</h3>
@@ -448,7 +448,7 @@ export default function GenresPage() {
           </div>
         </div>
 
-        <div className="w-full -mx-4 px-4 pr-12">
+        <div className="w-screen -ml-[calc((100vw-100%)/2)] px-4">
           <div className="border rounded-lg overflow-hidden w-full">
             {networkData && networkData.nodes && networkData.nodes.length > 0 ? (
               <div className="w-full" style={{ minHeight: '800px' }}>

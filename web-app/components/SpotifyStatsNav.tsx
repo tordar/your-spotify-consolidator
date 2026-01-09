@@ -1,10 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { Disc, Music2, Users, BarChart3, Search, X } from 'lucide-react'
+import { Disc, Music2, Users, BarChart3, Search, X, Network } from 'lucide-react'
 import { useSpotifyStats } from './SpotifyStatsContext'
 
-type SpotifyStatsPage = 'albums' | 'songs' | 'artists' | 'stats'
+type SpotifyStatsPage = 'albums' | 'songs' | 'artists' | 'stats' | 'genres'
 
 interface SpotifyStatsNavProps {
   currentPage: SpotifyStatsPage
@@ -12,7 +12,7 @@ interface SpotifyStatsNavProps {
 
 export default function SpotifyStatsNav({ currentPage }: SpotifyStatsNavProps) {
   const { searchTerm, setSearchTerm } = useSpotifyStats()
-  const showSearch = currentPage !== 'stats'
+  const showSearch = currentPage !== 'stats' && currentPage !== 'genres'
 
   const getLinkClasses = (page: SpotifyStatsPage, isFirst: boolean) => {
     const baseClasses = 'flex items-center gap-2 px-3 py-2 text-sm transition-colors'
@@ -69,10 +69,17 @@ export default function SpotifyStatsNav({ currentPage }: SpotifyStatsNavProps) {
           </Link>
           <Link
             href="/top-artists"
-            className={`${getLinkClasses('artists', false)} sm:rounded-r-md`}
+            className={getLinkClasses('artists', false)}
           >
             <Users className="w-4 h-4" />
             Artists
+          </Link>
+          <Link
+            href="/genres"
+            className={`${getLinkClasses('genres', false)} sm:rounded-r-md`}
+          >
+            <Network className="w-4 h-4" />
+            Genres
           </Link>
         </div>
       </div>

@@ -11,7 +11,7 @@ import {
   SheetTitle,
 } from './ui/sheet'
 
-type SpotifyStatsPage = 'albums' | 'songs' | 'artists' | 'stats' | 'genres'
+type SpotifyStatsPage = 'albums' | 'songs' | 'artists' | 'stats' | 'genres' | 'settings'
 
 interface SpotifyStatsLayoutProps {
   children: ReactNode

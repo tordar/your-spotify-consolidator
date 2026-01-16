@@ -397,14 +397,12 @@ export default function TopAlbumsPage() {
     }
 
     // Get theme colors
-    const foreground = getCSSVariable('--foreground')
-    const mutedForeground = getCSSVariable('--muted-foreground')
     const card = getCSSVariable('--card')
     const border = getCSSVariable('--border')
     const primary = getCSSVariable('--primary')
-    
-    const foregroundColor = foreground ? `rgb(${foreground})` : '#1f2937'
-    const mutedColor = mutedForeground ? `rgb(${mutedForeground})` : '#6b7280'
+
+    const foregroundColor = '#ffffff'
+    const mutedColor = '#808080'
     const cardColor = card ? `rgb(${card})` : '#ffffff'
     const borderColor = border ? `rgb(${border})` : '#e5e7eb'
     const primaryColor = primary ? `rgb(${primary})` : '#4f46e5'

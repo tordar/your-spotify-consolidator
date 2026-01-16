@@ -27,6 +27,7 @@ interface FilterSortToggleProps {
   showNewOnly: boolean
   onFilterToggle: (showNewOnly: boolean) => void
   sortOptions?: SortOptionConfig[]
+  compact?: boolean
 }
 
 const defaultSortOptions: SortOptionConfig[] = [
@@ -41,21 +42,30 @@ export default function FilterSortToggle({
   showNewOnly,
   onFilterToggle,
   sortOptions = defaultSortOptions,
+  compact = false,
 }: FilterSortToggleProps) {
+  const iconSize = compact ? 'w-3.5 h-3.5' : 'w-4 h-4'
+  const buttonHeight = compact ? 'h-7' : 'h-8'
+  const buttonPadding = compact ? 'px-2' : 'px-3'
+  const containerPadding = compact ? 'p-0.5' : 'p-1'
+  const textSize = compact ? 'text-xs' : 'text-sm'
+  const iconMargin = compact ? 'mr-1' : 'mr-2'
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <div className="inline-flex items-center border border-white/10 rounded-md bg-card/40 backdrop-blur-sm p-1">
+        <div className={`inline-flex items-center border border-white/10 rounded-md bg-card/40 backdrop-blur-sm ${containerPadding}`}>
           <Button 
             variant="outline" 
             size="sm"
             className={cn(
-              'h-8 px-3 border-0 bg-transparent',
+              `${buttonHeight} ${buttonPadding} border-0 bg-transparent ${textSize}`,
               showNewOnly && 'bg-primary/20 text-primary'
             )}
           >
-            <ArrowUpDown className="w-4 h-4 mr-2" />
-            Filter & Sort
+            <ArrowUpDown className={`${iconSize} ${iconMargin}`} />
+            <span className="hidden sm:inline">Filter & Sort</span>
+            <span className="sm:hidden">Filter</span>
           </Button>
         </div>
       </DropdownMenuTrigger>

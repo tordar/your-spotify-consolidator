@@ -1,15 +1,16 @@
 'use client'
 
-import { LayoutGrid, List } from 'lucide-react'
+import { LayoutGrid, List, PieChart } from 'lucide-react'
 import { Button } from './ui/button'
 import { cn } from '../lib/utils'
 
 interface ViewToggleProps {
-  viewMode: 'grid' | 'list'
-  onViewModeChange: (mode: 'grid' | 'list') => void
+  viewMode: 'grid' | 'list' | 'chart'
+  onViewModeChange: (mode: 'grid' | 'list' | 'chart') => void
+  showChart?: boolean
 }
 
-export default function ViewToggle({ viewMode, onViewModeChange }: ViewToggleProps) {
+export default function ViewToggle({ viewMode, onViewModeChange, showChart = true }: ViewToggleProps) {
   return (
     <div className="inline-flex items-center border border-white/10 rounded-md bg-card/40 backdrop-blur-sm p-1">
       <Button
@@ -36,6 +37,20 @@ export default function ViewToggle({ viewMode, onViewModeChange }: ViewTogglePro
       >
         <List className="w-4 h-4" />
       </Button>
+      {showChart && (
+        <Button
+          variant={viewMode === 'chart' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => onViewModeChange('chart')}
+          className={cn(
+            'h-8 px-3',
+            viewMode === 'chart' && 'bg-primary/20 text-primary border border-primary/30'
+          )}
+          aria-label="Chart view"
+        >
+          <PieChart className="w-4 h-4" />
+        </Button>
+      )}
     </div>
   )
 }

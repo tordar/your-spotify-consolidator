@@ -149,10 +149,19 @@ export default function TopSongsPage() {
   const [selectedSong, setSelectedSong] = useState<SongData | null>(null)
   const [mounted, setMounted] = useState(false)
   const [yearlyPlayTimeExpanded, setYearlyPlayTimeExpanded] = useState(true)
+  const [isMobile, setIsMobile] = useState(false)
+  const [showAllArtists, setShowAllArtists] = useState(false)
   const yearlyChartRef = useRef<HighchartsReact.RefObject>(null)
+  const artistChartRef = useRef<HighchartsReact.RefObject>(null)
   
   useEffect(() => {
     setMounted(true)
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
   }, [])
   
   // Use a consistent viewMode for skeleton to avoid hydration mismatch
@@ -241,6 +250,150 @@ export default function TopSongsPage() {
   
   const handleSongClick = (song: SongData) => {
     setSelectedSong(song)
+  }
+  
+  // Process artist data for pie chart
+  const getArtistChartData = (includeOthers: boolean = false): { name: string; y: number }[] => {
+    if (!songsData?.songs) return []
+    
+    // Count artist appearances in filtered/sorted songs
+    const artistCounts = new Map<string, number>()
+    
+    sortedSongs.forEach(song => {
+      const artistName = song.artist?.name
+      if (artistName) {
+        artistCounts.set(artistName, (artistCounts.get(artistName) || 0) + 1)
+      }
+    })
+    
+    // Separate artists that appear more than once from those that appear once
+    const multipleAppearances: { name: string; y: number }[] = []
+    let othersCount = 0
+    
+    artistCounts.forEach((count, artist) => {
+      if (count > 1) {
+        multipleAppearances.push({ name: artist, y: count })
+      } else {
+        othersCount += count
+      }
+    })
+    
+    // Sort by count (descending)
+    multipleAppearances.sort((a, b) => b.y - a.y)
+    
+    // Add "Others" only if includeOthers is true
+    if (includeOthers && othersCount > 0) {
+      multipleAppearances.push({ name: 'Others', y: othersCount })
+    }
+    
+    return multipleAppearances
+  }
+
+  // Prepare pie chart options for artist distribution
+  const getArtistPieChartOptions = (): Highcharts.Options => {
+    const chartData = getArtistChartData(showAllArtists)
+    
+    if (chartData.length === 0) {
+      return {
+        chart: {
+          type: 'pie',
+          height: 400
+        },
+        title: {
+          text: 'No data available'
+        }
+      }
+    }
+
+    // Get theme colors
+    const foreground = getCSSVariable('--foreground')
+    const mutedForeground = getCSSVariable('--muted-foreground')
+    const card = getCSSVariable('--card')
+    const border = getCSSVariable('--border')
+    const primary = getCSSVariable('--primary')
+    
+    const foregroundColor = foreground ? `rgb(${foreground})` : '#1f2937'
+    const mutedColor = mutedForeground ? `rgb(${mutedForeground})` : '#6b7280'
+    const cardColor = card ? `rgb(${card})` : '#ffffff'
+    const borderColor = border ? `rgb(${border})` : '#e5e7eb'
+    const primaryColor = primary ? `rgb(${primary})` : '#4f46e5'
+
+    // Generate colors for pie slices using a color palette
+    const baseColors = [
+      '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981',
+      '#ef4444', '#06b6d4', '#f97316', '#84cc16', '#6366f1',
+      '#14b8a6', '#a855f7', '#f43f5e', '#eab308', '#22c55e'
+    ]
+    
+    const colors = chartData.map((_, index) => {
+      return baseColors[index % baseColors.length]
+    })
+
+    return {
+      chart: {
+        type: 'pie',
+        backgroundColor: 'transparent',
+        height: isMobile ? 400 : 650,
+        style: {
+          fontFamily: 'inherit'
+        },
+        spacingLeft: 0,
+        spacingRight: 0,
+        spacingTop: 20,
+        spacingBottom: 20
+      },
+      title: {
+        text: 'Artists by Song Count',
+        style: {
+          color: foregroundColor,
+          fontSize: '18px',
+          fontWeight: '600'
+        }
+      },
+      subtitle: {
+        text: 'Only artists with multiple songs are shown individually',
+        style: {
+          color: mutedColor,
+          fontSize: '12px'
+        }
+      },
+      tooltip: {
+        backgroundColor: cardColor,
+        borderColor: borderColor,
+        borderRadius: 8,
+        style: {
+          color: foregroundColor
+        },
+        formatter: function(this: Highcharts.Point) {
+          const percentage = this.percentage?.toFixed(1) || 0
+          return `<b>${this.name}</b><br/>${this.y} ${this.y === 1 ? 'song' : 'songs'} (${percentage}%)`
+        }
+      },
+      plotOptions: {
+        pie: {
+          allowPointSelect: true,
+          cursor: 'pointer',
+          dataLabels: {
+            enabled: false
+          },
+          showInLegend: true,
+          colors: colors,
+          borderColor: borderColor,
+          borderWidth: 1
+        }
+      },
+      legend: {
+        enabled: false // Disable built-in legend, we'll use custom one
+      },
+      series: [{
+        name: 'Songs',
+        data: chartData,
+        type: 'pie'
+      }],
+      credits: {
+        enabled: false
+      }
+    }
   }
   
   // Prepare chart options for yearly play time
@@ -392,13 +545,100 @@ export default function TopSongsPage() {
       {loading ? (
         skeletonViewMode === 'grid' ? (
           <GridSkeleton count={12} />
-        ) : (
+        ) : skeletonViewMode === 'list' ? (
           <ListSkeleton count={10} />
+        ) : (
+          <div className="w-full">
+            <Card className="backdrop-blur-md bg-card/70 border-white/10 shadow-md p-4 sm:p-6">
+              <div className="h-[500px] flex items-center justify-center">
+                <div className="text-muted-foreground">Loading chart...</div>
+              </div>
+            </Card>
+          </div>
         )
       ) : (
         <>
           {/* Songs Display */}
-        {viewMode === 'grid' ? (
+        {viewMode === 'chart' ? (
+          <div className="w-full">
+            {mounted && sortedSongs.length > 0 ? (
+              <div className="flex flex-col lg:flex-row gap-4">
+                {/* Chart */}
+                <Card className="backdrop-blur-md bg-card/70 border-white/10 shadow-md p-4 sm:p-6 lg:w-1/2 flex-shrink-0">
+                  <HighchartsReact
+                    highcharts={Highcharts}
+                    options={getArtistPieChartOptions()}
+                    ref={artistChartRef}
+                  />
+                  {/* Show all artists checkbox */}
+                  <div className="mt-4 flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="show-all-artists-songs"
+                      checked={showAllArtists}
+                      onChange={(e) => setShowAllArtists(e.target.checked)}
+                      className="w-4 h-4 rounded border-white/20 bg-card text-primary focus:ring-2 focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                    />
+                    <label
+                      htmlFor="show-all-artists-songs"
+                      className="text-sm text-foreground cursor-pointer select-none"
+                    >
+                      Show all artist data
+                    </label>
+                  </div>
+                </Card>
+                
+                {/* Custom Legend */}
+                <Card className="backdrop-blur-md bg-card/70 border-white/10 shadow-md p-4 sm:p-6 w-full lg:w-1/2 flex-shrink-0">
+                  <h3 className="text-sm font-semibold mb-4 text-foreground">Artists</h3>
+                  <div className="overflow-y-auto max-h-[650px] pr-2 space-y-2 custom-scrollbar">
+                    {getArtistChartData(showAllArtists).map((item, index) => {
+                      const colors = (() => {
+                        const baseColors = [
+                          '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981',
+                          '#ef4444', '#06b6d4', '#f97316', '#84cc16', '#6366f1',
+                          '#14b8a6', '#a855f7', '#f43f5e', '#eab308', '#22c55e'
+                        ]
+                        return baseColors[index % baseColors.length]
+                      })()
+                      
+                      return (
+                        <div
+                          key={item.name}
+                          className="flex items-center gap-3 py-1.5 hover:opacity-80 transition-opacity cursor-pointer"
+                          onClick={() => {
+                            // Toggle series visibility on click
+                            const chart = artistChartRef.current?.chart
+                            if (chart) {
+                              const series = chart.series[0]
+                              const point = series.data.find((p: Highcharts.Point) => p.name === item.name)
+                              if (point) {
+                                point.setVisible(!point.visible)
+                              }
+                            }
+                          }}
+                        >
+                          <div
+                            className="w-4 h-4 rounded-sm flex-shrink-0"
+                            style={{ backgroundColor: colors }}
+                          />
+                          <span className="text-sm text-foreground flex-1">{item.name}</span>
+                          <span className="text-xs text-muted-foreground">{item.y}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </Card>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">
+                  {searchTerm ? `No songs found matching "${searchTerm}"` : 'No songs available'}
+                </p>
+              </div>
+            )}
+          </div>
+        ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {sortedSongs.map((song) => (
               <Card 

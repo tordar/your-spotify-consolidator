@@ -408,7 +408,7 @@ export default function TopArtistsPage() {
       currentPage="artists"
       additionalControls={
         <div className="flex items-center gap-2">
-          <ViewToggle viewMode={mounted ? viewMode : 'grid'} onViewModeChange={setViewMode} />
+          <ViewToggle viewMode={mounted ? viewMode : 'grid'} onViewModeChange={setViewMode} showChart={false} />
           <FilterSortToggle
             sortBy={sortBy}
             onSortChange={setSortBy}

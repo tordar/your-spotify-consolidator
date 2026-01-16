@@ -1,5 +1,6 @@
 import { SpotifyTokenManager } from '../spotify-token-manager';
 import { SpotifyApiClient } from './utils/spotify-api-client';
+// import { MusicBrainzApiClient } from './utils/musicbrainz-api-client';
 import { ConsolidationRulesManager, Consolidator } from './utils/consolidation';
 import { FileOperations } from './utils/file-operations';
 import type {
@@ -736,7 +737,52 @@ class CleanedFilesGenerator {
       }
     });
 
-    console.log(`✅ Enriched ${enrichedCount} artists with genres`);
+    console.log(`✅ Enriched ${enrichedCount} artists with genres from Spotify`);
+
+    // MusicBrainz enrichment as fallback for artists with few or no genres
+    // COMMENTED OUT: MusicBrainz integration temporarily disabled
+    /*
+    const artistsNeedingMoreGenres = artists.filter(artist => 
+      !artist.genres || artist.genres.length < 3 // Only enrich if < 3 genres
+    );
+
+    if (artistsNeedingMoreGenres.length > 0) {
+      console.log(`\n📥 Enriching ${artistsNeedingMoreGenres.length} artists with MusicBrainz (artists with < 3 genres)...`);
+      
+      const mbClient = new MusicBrainzApiClient();
+      const artistNames = artistsNeedingMoreGenres.map(a => a.name);
+      const mbGenres = await mbClient.searchArtistsGenres(artistNames);
+      
+      // Merge MusicBrainz genres with existing Spotify genres
+      let mbEnrichedCount = 0;
+      artists.forEach(artist => {
+        const nameKey = artist.name.toLowerCase().trim();
+        const mbGenresForArtist = mbGenres.get(nameKey);
+        
+        if (mbGenresForArtist && mbGenresForArtist.length > 0) {
+          // Merge genres, avoiding duplicates
+          const existingGenres = new Set((artist.genres || []).map(g => g.toLowerCase()));
+          let addedGenres = 0;
+          
+          mbGenresForArtist.forEach(genre => {
+            if (!existingGenres.has(genre)) {
+              artist.genres = artist.genres || [];
+              artist.genres.push(genre);
+              existingGenres.add(genre);
+              addedGenres++;
+            }
+          });
+          
+          if (addedGenres > 0) {
+            mbEnrichedCount++;
+          }
+        }
+      });
+      
+      console.log(`✅ MusicBrainz enriched ${mbEnrichedCount} artists with additional genres`);
+    }
+    */
+
     return artists.map(({ songId, ...rest }) => rest);
   }
 

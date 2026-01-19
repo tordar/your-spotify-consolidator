@@ -151,6 +151,34 @@ export default function StatsPage() {
     const categories = statsData.stats.yearlyListeningTime.map(item => item.year)
     const data = statsData.stats.yearlyListeningTime.map(item => item.totalListeningHours)
 
+    // Calculate estimated hours for current year
+    const currentYear = new Date().getFullYear().toString()
+    const currentYearIndex = categories.indexOf(currentYear)
+    let estimatedData: (number | null)[] = new Array(categories.length).fill(null)
+    
+    if (currentYearIndex !== -1) {
+      const currentYearData = statsData.stats.yearlyListeningTime[currentYearIndex]
+      const hoursSoFar = currentYearData.totalListeningHours
+      
+      // Calculate day of year (1-365/366)
+      const now = new Date()
+      const startOfYear = new Date(now.getFullYear(), 0, 1)
+      const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24)) + 1
+      
+      // Calculate days remaining in year
+      const isLeapYear = (year: number) => (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0)
+      const daysInYear = isLeapYear(now.getFullYear()) ? 366 : 365
+      const daysRemaining = daysInYear - dayOfYear
+      
+      // Calculate estimated additional hours: (hours so far / day of year) * days remaining
+      const estimatedAdditionalHours = (hoursSoFar / dayOfYear) * daysRemaining
+      const estimatedTotalHours = hoursSoFar + estimatedAdditionalHours
+      
+      // Set estimated data to show the estimated TOTAL (will be stacked on top of actual)
+      // Since we're stacking, we need to subtract actual from total to get the height of the estimated bar
+      estimatedData[currentYearIndex] = estimatedTotalHours - hoursSoFar
+    }
+
     // Get theme colors
     const foreground = getCSSVariable('--foreground')
     const mutedForeground = getCSSVariable('--muted-foreground')
@@ -208,10 +236,14 @@ export default function StatsPage() {
             color: mutedColor
           }
         },
-        gridLineColor: borderColor
+        gridLineColor: borderColor,
+        reversedStacks: false
       },
       legend: {
-        enabled: false
+        enabled: true,
+        itemStyle: {
+          color: foregroundColor
+        }
       },
       tooltip: {
         backgroundColor: cardColor,
@@ -220,29 +252,48 @@ export default function StatsPage() {
           color: foregroundColor
         },
         formatter: function(this: Highcharts.Point) {
-          // Access the category (year) from the categories array
-          // this.x should be the category when using categories, but we'll use the index as fallback
           const pointIndex = typeof this.x === 'number' ? this.x : (this.index ?? 0)
           const year = categories[pointIndex] || String(this.x)
-          return `<b>${year}</b><br/>${this.y?.toFixed(2)} hours`
+          
+          if (this.series.name === 'Estimated (Projected)') {
+            // Calculate estimated total: actual hours + estimated additional hours
+            const actualHours = data[pointIndex] || 0
+            const estimatedAdditional = this.y as number
+            const estimatedTotal = actualHours + estimatedAdditional
+            return `<b>${year} (Estimated Total)</b><br/>${estimatedTotal.toFixed(2)} hours<br/><span style="color: ${mutedColor}">Projected if current pace continues</span>`
+          } else {
+            return `<b>${year}</b><br/>${this.y?.toFixed(2)} hours`
+          }
         }
       },
       plotOptions: {
         column: {
-          color: primaryColor,
           borderRadius: 4,
           dataLabels: {
             enabled: false
           },
           pointPadding: 0.05,
-          groupPadding: 0.1
+          groupPadding: 0.1,
+          stacking: 'normal'
         }
       },
-      series: [{
-        name: 'Listening Hours',
-        data: data,
-        type: 'column'
-      }],
+      series: [
+        {
+          name: 'Listening Hours',
+          data: data,
+          type: 'column',
+          color: primaryColor
+        },
+        {
+          name: 'Estimated (Projected)',
+          data: estimatedData,
+          type: 'column',
+          color: mutedColor,
+          opacity: 0.6,
+          borderColor: borderColor,
+          borderWidth: 1
+        }
+      ],
       credits: {
         enabled: false
       }

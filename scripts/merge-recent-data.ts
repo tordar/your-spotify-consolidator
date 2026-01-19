@@ -156,11 +156,11 @@ class DataMerger {
   private mergeData(existingData: CompleteListeningHistory, recentPlays: RecentPlayData[]): CompleteListeningHistory {
     console.log('🔄 Merging recent plays with existing data...');
     
-    // Create a map of existing songs for quick lookup
+    // Create a map of existing songs for quick lookup by songId (unique per album)
     const existingSongsMap = new Map<string, CompleteSong>();
+    
     existingData.songs.forEach(song => {
-      const key = `${song.name.toLowerCase().trim()}|${song.artists[0]?.toLowerCase().trim() || 'unknown'}`;
-      existingSongsMap.set(key, song);
+      existingSongsMap.set(song.songId, song);
     });
 
     // Clean up existing duplicates in the data
@@ -190,11 +190,11 @@ class DataMerger {
 
     // Process each recent play
     recentPlays.forEach(play => {
-      const key = `${play.name.toLowerCase().trim()}|${play.artists[0]?.toLowerCase().trim() || 'unknown'}`;
+      // Match by songId (unique per album)
+      const existingSong = existingSongsMap.get(play.id);
       
-      if (existingSongsMap.has(key)) {
+      if (existingSong) {
         // Update existing song (maintains chronological position)
-        const existingSong = existingSongsMap.get(key)!;
         
         // Check if this exact play time already exists to avoid duplicates
         const playTimeExists = existingSong.listeningEvents.some(event => event.playedAt === play.played_at);
@@ -205,6 +205,16 @@ class DataMerger {
           // Update duration_ms if it was missing (0) and we have it from recent plays
           if (existingSong.duration_ms === 0 && play.duration_ms > 0) {
             existingSong.duration_ms = play.duration_ms;
+          }
+          // Update album information from recent play (this is the actual album from Spotify API)
+          // Since songId is unique per album, this ensures correct album association
+          if (play.album) {
+            existingSong.album.id = play.album.id;
+            existingSong.album.name = play.album.name;
+            // Update images if we have better ones
+            if (play.album.images && play.album.images.length > 0) {
+              existingSong.album.images = play.album.images;
+            }
           }
           existingSong.listeningEvents.push({
             playedAt: play.played_at,

@@ -63,3 +63,7 @@ coverage/
 # Documentation and planning files
 PRODUCT_VISION.md
 Todo.txt
+
+# Cursor rules
+.cursorrules
+.cursorrules/

@@ -107,7 +107,7 @@ export default function StatsPage() {
   // Set default selected year to most recent year with data
   useEffect(() => {
     if (statsData?.stats?.yearlyTopItems && statsData.stats.yearlyTopItems.length > 0 && !selectedYear) {
-      const years = statsData.stats.yearlyTopItems.map(item => item.year).sort((a, b) => parseInt(b) - parseInt(a))
+      const years = statsData.stats.yearlyTopItems.map(item => item.year).toSorted((a, b) => parseInt(b) - parseInt(a))
       setSelectedYear(years[0])
     }
   }, [statsData, selectedYear])
@@ -315,7 +315,7 @@ export default function StatsPage() {
     }
 
     // Sort by hour to ensure correct order (0-23)
-    const sortedData = [...statsData.stats.hourlyListeningDistribution].sort((a, b) => a.hour - b.hour)
+    const sortedData = statsData.stats.hourlyListeningDistribution.toSorted((a, b) => a.hour - b.hour)
     const categories = sortedData.map(item => {
       // Format hour in 24-hour format (00-23)
       return `${item.hour.toString().padStart(2, '0')}`
@@ -422,7 +422,7 @@ export default function StatsPage() {
   
   // Get selected year data
   const selectedYearData = statsData?.stats?.yearlyTopItems?.find(item => item.year === selectedYear)
-  const availableYears = statsData?.stats?.yearlyTopItems?.map(item => item.year).sort((a, b) => parseInt(b) - parseInt(a)) || []
+  const availableYears = statsData?.stats?.yearlyTopItems?.map(item => item.year).toSorted((a, b) => parseInt(b) - parseInt(a)) || []
   
   // Format duration helper
   const formatDuration = (durationMs: number) => {
@@ -444,7 +444,7 @@ export default function StatsPage() {
         percentage: (country.totalHours / statsData.stats.totalListeningHours) * 100
       }))
     
-    return [...countries].sort((a, b) => b.totalHours - a.totalHours)
+    return countries.toSorted((a, b) => b.totalHours - a.totalHours)
   }
   
   return (

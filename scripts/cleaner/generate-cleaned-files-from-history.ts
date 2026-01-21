@@ -1077,12 +1077,25 @@ class CleanedFilesGenerator {
       
       // If we found a more recent album, update the metadata
       if (mostRecentAlbum !== null && mostRecentAlbum.primaryAlbumId !== consolidatedAlbum.primaryAlbumId) {
+        const firstArtist = consolidatedAlbum.album.artists[0] || mostRecentAlbum.album.artists[0] || 'Unknown Artist';
+        let albumName = mostRecentAlbum.album.name;
+        
+        // Apply base name rule if it exists (to ensure we use the canonical name, not a variation)
+        const baseName = this.consolidator.getBaseAlbumNameForGrouping(albumName, firstArtist) ||
+                        this.consolidator.getBaseAlbumNameForGrouping(
+                          this.consolidator.normalizeAlbumNameForGrouping(albumName, firstArtist), 
+                          firstArtist
+                        );
+        if (baseName) {
+          albumName = baseName;
+        }
+        
         return {
           ...consolidatedAlbum,
           primaryAlbumId: mostRecentAlbum.primaryAlbumId,
           album: {
             ...consolidatedAlbum.album,
-            name: mostRecentAlbum.album.name,
+            name: albumName,
             images: mostRecentAlbum.album.images.length > 0 ? mostRecentAlbum.album.images : consolidatedAlbum.album.images,
             external_urls: Object.keys(mostRecentAlbum.album.external_urls).length > 0 ? mostRecentAlbum.album.external_urls : consolidatedAlbum.album.external_urls,
             release_date: mostRecentAlbum.album.release_date || consolidatedAlbum.album.release_date,

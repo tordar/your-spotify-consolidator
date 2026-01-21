@@ -1090,6 +1090,34 @@ class CleanedFilesGenerator {
           albumName = baseName;
         }
         
+        // Prefer older release_date when updating with most recent album metadata
+        let finalReleaseDate = consolidatedAlbum.album.release_date;
+        const mostRecentReleaseDate = mostRecentAlbum.album.release_date;
+        
+        if (mostRecentReleaseDate && mostRecentReleaseDate !== '') {
+          if (finalReleaseDate && finalReleaseDate !== '') {
+            // Compare dates: prefer the older one
+            const consolidatedDate = new Date(finalReleaseDate).getTime();
+            const mostRecentDate = new Date(mostRecentReleaseDate).getTime();
+            if (!isNaN(consolidatedDate) && !isNaN(mostRecentDate)) {
+              // Keep the older release_date
+              if (consolidatedDate < mostRecentDate) {
+                // Keep consolidated (older) date
+                finalReleaseDate = consolidatedAlbum.album.release_date;
+              } else {
+                // Most recent date is older, use it
+                finalReleaseDate = mostRecentReleaseDate;
+              }
+            } else {
+              // If date parsing fails, prefer most recent
+              finalReleaseDate = mostRecentReleaseDate || finalReleaseDate;
+            }
+          } else {
+            // No consolidated date, use most recent
+            finalReleaseDate = mostRecentReleaseDate;
+          }
+        }
+        
         return {
           ...consolidatedAlbum,
           primaryAlbumId: mostRecentAlbum.primaryAlbumId,
@@ -1098,7 +1126,7 @@ class CleanedFilesGenerator {
             name: albumName,
             images: mostRecentAlbum.album.images.length > 0 ? mostRecentAlbum.album.images : consolidatedAlbum.album.images,
             external_urls: Object.keys(mostRecentAlbum.album.external_urls).length > 0 ? mostRecentAlbum.album.external_urls : consolidatedAlbum.album.external_urls,
-            release_date: mostRecentAlbum.album.release_date || consolidatedAlbum.album.release_date,
+            release_date: finalReleaseDate,
             genres: mostRecentAlbum.album.genres || consolidatedAlbum.album.genres
           }
         };
@@ -1316,7 +1344,7 @@ class CleanedFilesGenerator {
         if (existing.album.external_urls && Object.keys(existing.album.external_urls).length > 0) {
           album.album.external_urls = existing.album.external_urls;
         }
-        // Always copy release_date from existing if it's valid
+        // Copy release_date from existing if it's valid (we'll prefer older dates later)
         if (existing.album.release_date && existing.album.release_date !== '') {
           album.album.release_date = existing.album.release_date;
           if (existing.album.release_date_precision) {
@@ -1324,6 +1352,9 @@ class CleanedFilesGenerator {
           }
         }
       }
+      
+      // Store existing release_date for comparison (to preserve oldest date)
+      const existingReleaseDate = album.album.release_date;
 
       const track = trackMap.get(album.primaryAlbumId);
       const albumId = songIdToAlbumId.get(album.primaryAlbumId);
@@ -1351,10 +1382,31 @@ class CleanedFilesGenerator {
           album.album.name = albumName;
           album.album.artists = spotifyAlbum.artists.map(a => a.name);
           album.album.album_type = spotifyAlbum.album_type;
-          // Always set release_date from Spotify if available
+          // Prefer older release_date (preserve original release dates over deluxe/anniversary editions)
           if (spotifyAlbum.release_date && spotifyAlbum.release_date !== '') {
-            album.album.release_date = spotifyAlbum.release_date;
-            album.album.release_date_precision = spotifyAlbum.release_date_precision;
+            if (existingReleaseDate && existingReleaseDate !== '') {
+              // Compare dates: prefer the older one
+              const existingDate = new Date(existingReleaseDate).getTime();
+              const spotifyDate = new Date(spotifyAlbum.release_date).getTime();
+              if (!isNaN(existingDate) && !isNaN(spotifyDate)) {
+                // Keep the older release_date
+                if (existingDate < spotifyDate) {
+                  // Keep existing (older) date - already set from existing
+                } else {
+                  // Spotify date is older, use it
+                  album.album.release_date = spotifyAlbum.release_date;
+                  album.album.release_date_precision = spotifyAlbum.release_date_precision;
+                }
+              } else {
+                // If date parsing fails, use Spotify's date
+                album.album.release_date = spotifyAlbum.release_date;
+                album.album.release_date_precision = spotifyAlbum.release_date_precision;
+              }
+            } else {
+              // No existing date, use Spotify's
+              album.album.release_date = spotifyAlbum.release_date;
+              album.album.release_date_precision = spotifyAlbum.release_date_precision;
+            }
           }
           album.album.popularity = spotifyAlbum.popularity;
           if (!album.album.images || album.album.images.length === 0) {
@@ -1379,10 +1431,31 @@ class CleanedFilesGenerator {
           album.album.name = albumName;
           album.album.artists = track.album.artists.map(a => a.name);
           album.album.album_type = track.album.album_type;
-          // Always set release_date from track if available
+          // Prefer older release_date (preserve original release dates over deluxe/anniversary editions)
           if (track.album.release_date && track.album.release_date !== '') {
-            album.album.release_date = track.album.release_date;
-            album.album.release_date_precision = track.album.release_date_precision;
+            if (existingReleaseDate && existingReleaseDate !== '') {
+              // Compare dates: prefer the older one
+              const existingDate = new Date(existingReleaseDate).getTime();
+              const trackDate = new Date(track.album.release_date).getTime();
+              if (!isNaN(existingDate) && !isNaN(trackDate)) {
+                // Keep the older release_date
+                if (existingDate < trackDate) {
+                  // Keep existing (older) date - already set from existing
+                } else {
+                  // Track date is older, use it
+                  album.album.release_date = track.album.release_date;
+                  album.album.release_date_precision = track.album.release_date_precision;
+                }
+              } else {
+                // If date parsing fails, use track's date
+                album.album.release_date = track.album.release_date;
+                album.album.release_date_precision = track.album.release_date_precision;
+              }
+            } else {
+              // No existing date, use track's
+              album.album.release_date = track.album.release_date;
+              album.album.release_date_precision = track.album.release_date_precision;
+            }
           }
           if (!album.album.images || album.album.images.length === 0) {
             album.album.images = track.album.images;

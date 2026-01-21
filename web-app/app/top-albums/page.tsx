@@ -337,6 +337,32 @@ export default function TopAlbumsPage() {
         return b.count - a.count
     }
   })
+
+  // Group albums by release year for yearly view
+  const getAlbumsByYear = (): Map<string, AlbumData[]> => {
+    const albumsByYear = new Map<string, AlbumData[]>()
+    
+    filteredAlbums.forEach(album => {
+      const releaseDate = album.album.release_date
+      if (!releaseDate) return
+      
+      // Extract year from release_date (format: YYYY-MM-DD or YYYY-MM or YYYY)
+      const year = releaseDate.split('-')[0]
+      if (!year || year.length !== 4) return
+      
+      if (!albumsByYear.has(year)) {
+        albumsByYear.set(year, [])
+      }
+      albumsByYear.get(year)!.push(album)
+    })
+    
+    // Sort albums within each year by plays (count)
+    albumsByYear.forEach((albums, year) => {
+      albums.sort((a, b) => (b.count || 0) - (a.count || 0))
+    })
+    
+    return albumsByYear
+  }
   
   const handleAlbumClick = (album: AlbumData) => {
     setSelectedAlbum(album)
@@ -617,7 +643,7 @@ export default function TopAlbumsPage() {
       currentPage="albums"
       additionalControls={
         <div className="flex items-center gap-2">
-          <ViewToggle viewMode={mounted ? viewMode : 'grid'} onViewModeChange={setViewMode} />
+          <ViewToggle viewMode={mounted ? viewMode : 'grid'} onViewModeChange={setViewMode} showYearly={true} />
           <FilterSortToggle
             sortBy={sortBy}
             onSortChange={setSortBy}
@@ -636,7 +662,7 @@ export default function TopAlbumsPage() {
       }
     >
       {loading ? (
-        skeletonViewMode === 'grid' ? (
+        skeletonViewMode === 'grid' || skeletonViewMode === 'yearly' ? (
           <GridSkeleton count={12} />
         ) : (
           <ListSkeleton count={10} />
@@ -716,6 +742,60 @@ export default function TopAlbumsPage() {
                 </Card>
               </div>
             )}
+          </div>
+        ) : viewMode === 'yearly' ? (
+          <div className="space-y-6">
+            {(() => {
+              const albumsByYear = getAlbumsByYear()
+              const sortedYears = Array.from(albumsByYear.keys()).sort((a, b) => parseInt(b) - parseInt(a))
+              
+              if (sortedYears.length === 0) {
+                return (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">No albums with release dates found</p>
+                  </div>
+                )
+              }
+              
+              return sortedYears.map(year => {
+                const albums = albumsByYear.get(year)!
+                return (
+                  <div key={year} className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start">
+                    {/* Year Label */}
+                    <div className="flex-shrink-0 w-full sm:w-20 md:w-24 flex items-start sm:items-center justify-start sm:justify-end pt-0 sm:pt-1">
+                      <span className="text-base sm:text-lg md:text-xl font-bold text-foreground bg-muted/50 backdrop-blur-sm border border-white/10 rounded px-2 sm:px-3 py-1.5 sm:py-2 whitespace-nowrap">
+                        {year}
+                      </span>
+                    </div>
+                    
+                    {/* Album Covers Row */}
+                    <div className="flex-1 w-full grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2 sm:gap-3 md:gap-4">
+                      {albums.map((album) => (
+                        <Card
+                          key={album.primaryAlbumId}
+                          className="group backdrop-blur-md bg-card/70 border-white/10 shadow-md hover:shadow-xl hover:bg-card/85 hover:border-white/20 transition-all duration-200 cursor-pointer"
+                          onClick={() => handleAlbumClick(album)}
+                        >
+                          <CardContent className="p-2 sm:p-3">
+                            <div className="mb-2">
+                              <LazyAlbumImage album={album.album} rank={album.rank} />
+                            </div>
+                            <div className="space-y-1">
+                              <h3 className="font-semibold text-xs leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+                                {album.album.name}
+                              </h3>
+                              <p className="text-xs text-muted-foreground line-clamp-1">
+                                {album.album.artists[0]}
+                              </p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })
+            })()}
           </div>
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">

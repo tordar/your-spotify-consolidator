@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode } from 'react'
 
-type ViewMode = 'grid' | 'list' | 'chart'
+type ViewMode = 'grid' | 'list' | 'chart' | 'yearly'
 
 interface SpotifyStatsContextType {
   searchTerm: string

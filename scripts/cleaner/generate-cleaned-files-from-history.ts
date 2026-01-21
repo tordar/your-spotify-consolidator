@@ -1335,7 +1335,20 @@ class CleanedFilesGenerator {
         }
 
         if (spotifyAlbum) {
-          album.album.name = spotifyAlbum.name;
+          let albumName = spotifyAlbum.name;
+          const firstArtist = spotifyAlbum.artists[0]?.name || album.album.artists[0] || 'Unknown Artist';
+          
+          // Apply base name rule if it exists (to ensure we use the canonical name, not a variation)
+          const baseName = this.consolidator.getBaseAlbumNameForGrouping(albumName, firstArtist) ||
+                          this.consolidator.getBaseAlbumNameForGrouping(
+                            this.consolidator.normalizeAlbumNameForGrouping(albumName, firstArtist), 
+                            firstArtist
+                          );
+          if (baseName) {
+            albumName = baseName;
+          }
+          
+          album.album.name = albumName;
           album.album.artists = spotifyAlbum.artists.map(a => a.name);
           album.album.album_type = spotifyAlbum.album_type;
           // Always set release_date from Spotify if available
@@ -1350,7 +1363,20 @@ class CleanedFilesGenerator {
           album.album.external_urls = spotifyAlbum.external_urls;
           album.album.genres = spotifyAlbum.genres;
         } else if (track) {
-          album.album.name = track.album.name;
+          let albumName = track.album.name;
+          const firstArtist = track.album.artists[0]?.name || album.album.artists[0] || 'Unknown Artist';
+          
+          // Apply base name rule if it exists (to ensure we use the canonical name, not a variation)
+          const baseName = this.consolidator.getBaseAlbumNameForGrouping(albumName, firstArtist) ||
+                          this.consolidator.getBaseAlbumNameForGrouping(
+                            this.consolidator.normalizeAlbumNameForGrouping(albumName, firstArtist), 
+                            firstArtist
+                          );
+          if (baseName) {
+            albumName = baseName;
+          }
+          
+          album.album.name = albumName;
           album.album.artists = track.album.artists.map(a => a.name);
           album.album.album_type = track.album.album_type;
           // Always set release_date from track if available

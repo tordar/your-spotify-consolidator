@@ -1260,6 +1260,7 @@ class CleanedFilesGenerator {
       // Copy images from existing if available
       this.copyImagesIfAvailable(album.album, existing?.album);
       // Check if we have all metadata (from existing or already in album)
+      // IMPORTANT: Always require release_date to be non-empty
       const hasAllMetadata = existing
         ? (existing.album.images && existing.album.images.length > 0 &&
            existing.album.external_urls && Object.keys(existing.album.external_urls).length > 0 &&
@@ -1267,7 +1268,9 @@ class CleanedFilesGenerator {
         : (album.album.images && album.album.images.length > 0 &&
            album.album.external_urls && Object.keys(album.album.external_urls).length > 0 &&
            album.album.release_date && album.album.release_date !== '');
-      return !hasAllMetadata;
+      // Always include albums missing release_date, even if they have other metadata
+      const needsReleaseDate = !album.album.release_date || album.album.release_date === '';
+      return !hasAllMetadata || needsReleaseDate;
     });
 
     if (albumsNeedingMetadata.length === 0) {
@@ -1313,8 +1316,12 @@ class CleanedFilesGenerator {
         if (existing.album.external_urls && Object.keys(existing.album.external_urls).length > 0) {
           album.album.external_urls = existing.album.external_urls;
         }
+        // Always copy release_date from existing if it's valid
         if (existing.album.release_date && existing.album.release_date !== '') {
           album.album.release_date = existing.album.release_date;
+          if (existing.album.release_date_precision) {
+            album.album.release_date_precision = existing.album.release_date_precision;
+          }
         }
       }
 
@@ -1331,8 +1338,11 @@ class CleanedFilesGenerator {
           album.album.name = spotifyAlbum.name;
           album.album.artists = spotifyAlbum.artists.map(a => a.name);
           album.album.album_type = spotifyAlbum.album_type;
-          album.album.release_date = spotifyAlbum.release_date;
-          album.album.release_date_precision = spotifyAlbum.release_date_precision;
+          // Always set release_date from Spotify if available
+          if (spotifyAlbum.release_date && spotifyAlbum.release_date !== '') {
+            album.album.release_date = spotifyAlbum.release_date;
+            album.album.release_date_precision = spotifyAlbum.release_date_precision;
+          }
           album.album.popularity = spotifyAlbum.popularity;
           if (!album.album.images || album.album.images.length === 0) {
             album.album.images = spotifyAlbum.images;
@@ -1343,8 +1353,11 @@ class CleanedFilesGenerator {
           album.album.name = track.album.name;
           album.album.artists = track.album.artists.map(a => a.name);
           album.album.album_type = track.album.album_type;
-          album.album.release_date = track.album.release_date;
-          album.album.release_date_precision = track.album.release_date_precision;
+          // Always set release_date from track if available
+          if (track.album.release_date && track.album.release_date !== '') {
+            album.album.release_date = track.album.release_date;
+            album.album.release_date_precision = track.album.release_date_precision;
+          }
           if (!album.album.images || album.album.images.length === 0) {
             album.album.images = track.album.images;
           }
@@ -1356,9 +1369,32 @@ class CleanedFilesGenerator {
         }
 
         enrichedCount++;
+      } else {
+        // Even if API call failed, try to get release_date from existing if we don't have it
+        if ((!album.album.release_date || album.album.release_date === '') && existing) {
+          if (existing.album.release_date && existing.album.release_date !== '') {
+            album.album.release_date = existing.album.release_date;
+            if (existing.album.release_date_precision) {
+              album.album.release_date_precision = existing.album.release_date_precision;
+            }
+          }
+        }
       }
     });
 
+    // Check for albums still missing release_date
+    const albumsMissingReleaseDate = albums.filter(album => 
+      !album.album.release_date || album.album.release_date === ''
+    );
+    
+    if (albumsMissingReleaseDate.length > 0) {
+      console.log(`⚠️  ${albumsMissingReleaseDate.length} albums still missing release_date after enrichment`);
+      // Log first few examples for debugging
+      albumsMissingReleaseDate.slice(0, 5).forEach(album => {
+        console.log(`   - "${album.album.name}" by ${album.album.artists[0] || 'Unknown'} (ID: ${album.primaryAlbumId})`);
+      });
+    }
+    
     console.log(`✅ Enriched ${enrichedCount} albums with metadata`);
     return albums;
   }

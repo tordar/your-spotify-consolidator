@@ -802,59 +802,59 @@ export default function TopSongsPage() {
                   </div>
                   
                   {/* Mobile Layout */}
-                  <div className="md:hidden flex items-center gap-3">
+                  <div className="md:hidden flex items-start gap-3">
                     {/* Album Image */}
                     <div className="flex-shrink-0">
                       <LazySongImage album={song.album} rank={song.rank} size="mobile" />
                     </div>
                     
                     {/* Song Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <RankingMovement
-                          currentRank={song.rank}
-                          rank30DaysAgo={song.rank_30_days_ago}
-                          currentCount={song.count}
-                          count30DaysAgo={song.count_30_days_ago}
-                          size="sm"
-                          type="rank"
-                        />
-                        <RankingMovement
-                          currentRank={song.rank}
-                          rank30DaysAgo={song.rank_30_days_ago}
-                          currentCount={song.count}
-                          count30DaysAgo={song.count_30_days_ago}
-                          size="sm"
-                          type="playCount"
-                        />
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <RankingMovement
+                            currentRank={song.rank}
+                            rank30DaysAgo={song.rank_30_days_ago}
+                            currentCount={song.count}
+                            count30DaysAgo={song.count_30_days_ago}
+                            size="sm"
+                            type="rank"
+                          />
+                          <h3 className="font-semibold text-sm leading-tight group-hover:text-primary transition-colors mt-1 break-words">
+                            {song.song.name}
+                          </h3>
+                          <button
+                            onClick={() => setSearchTerm(song.artist.name)}
+                            className="text-sm text-muted-foreground hover:text-primary transition-colors text-left break-words"
+                          >
+                            {song.artist.name}
+                          </button>
+                          <button
+                            onClick={() => setSearchTerm(song.album.name)}
+                            className="text-xs text-muted-foreground hover:text-primary transition-colors line-clamp-1 text-left break-words"
+                          >
+                            {song.album.name}
+                          </button>
+                        </div>
+                        <div className="flex flex-col items-end ml-2 flex-shrink-0">
+                          <RankingMovement
+                            currentRank={song.rank}
+                            rank30DaysAgo={song.rank_30_days_ago}
+                            currentCount={song.count}
+                            count30DaysAgo={song.count_30_days_ago}
+                            size="sm"
+                            type="playCount"
+                          />
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {(() => {
+                              const totalMinutes = Math.floor(song.duration_ms / 60000)
+                              const hours = Math.floor(totalMinutes / 60)
+                              const minutes = totalMinutes % 60
+                              return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+                            })()}
+                          </p>
+                        </div>
                       </div>
-                      
-                      <h3 className="font-semibold text-sm leading-tight group-hover:text-primary transition-colors mb-1 break-words">
-                        {song.song.name}
-                      </h3>
-                      
-                      <button
-                        onClick={() => setSearchTerm(song.artist.name)}
-                        className="text-sm text-muted-foreground hover:text-primary transition-colors text-left mb-1 break-words"
-                      >
-                        {song.artist.name}
-                      </button>
-                      
-                      <button
-                        onClick={() => setSearchTerm(song.album.name)}
-                        className="text-xs text-muted-foreground hover:text-primary transition-colors mb-1 line-clamp-1 text-left break-words"
-                      >
-                        {song.album.name}
-                      </button>
-                      
-                      <p className="text-xs text-muted-foreground">
-                        {(() => {
-                          const totalMinutes = Math.floor(song.duration_ms / 60000)
-                          const hours = Math.floor(totalMinutes / 60)
-                          const minutes = totalMinutes % 60
-                          return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
-                        })()}
-                      </p>
                     </div>
                   </div>
                 </CardContent>

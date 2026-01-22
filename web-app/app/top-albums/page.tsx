@@ -950,55 +950,56 @@ export default function TopAlbumsPage() {
                   </div>
                   
                   {/* Mobile Layout */}
-                  <div className="md:hidden flex items-center gap-3">
+                  <div className="md:hidden flex items-start gap-3">
                     {/* Album Image */}
                     <div className="flex-shrink-0">
                       <LazyAlbumImage album={album.album} rank={album.rank} size="mobile" />
                     </div>
                     
                     {/* Album Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <RankingMovement
-                          currentRank={album.rank}
-                          rank30DaysAgo={album.rank_30_days_ago}
-                          currentCount={album.count}
-                          count30DaysAgo={album.count_30_days_ago}
-                          size="sm"
-                          type="rank"
-                        />
-                        <RankingMovement
-                          currentRank={album.rank}
-                          rank30DaysAgo={album.rank_30_days_ago}
-                          currentCount={album.count}
-                          count30DaysAgo={album.count_30_days_ago}
-                          size="sm"
-                          type="playCount"
-                        />
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <RankingMovement
+                            currentRank={album.rank}
+                            rank30DaysAgo={album.rank_30_days_ago}
+                            currentCount={album.count}
+                            count30DaysAgo={album.count_30_days_ago}
+                            size="sm"
+                            type="rank"
+                          />
+                          <h3 className="font-semibold text-sm leading-tight group-hover:text-primary transition-colors mt-1 break-words">
+                            {album.album.name}
+                          </h3>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSearchTerm(album.album.artists[0])
+                            }}
+                            className="text-sm text-muted-foreground hover:text-primary transition-colors text-left break-words"
+                          >
+                            {album.album.artists[0]}
+                          </button>
+                        </div>
+                        <div className="flex flex-col items-end ml-2 flex-shrink-0">
+                          <RankingMovement
+                            currentRank={album.rank}
+                            rank30DaysAgo={album.rank_30_days_ago}
+                            currentCount={album.count}
+                            count30DaysAgo={album.count_30_days_ago}
+                            size="sm"
+                            type="playCount"
+                          />
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {(() => {
+                              const totalMinutes = Math.floor(album.total_duration_ms / 60000)
+                              const hours = Math.floor(totalMinutes / 60)
+                              const minutes = totalMinutes % 60
+                              return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+                            })()}
+                          </p>
+                        </div>
                       </div>
-                      
-                      <h3 className="font-semibold text-sm leading-tight group-hover:text-primary transition-colors mb-1 break-words">
-                        {album.album.name}
-                      </h3>
-                      
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSearchTerm(album.album.artists[0])
-                        }}
-                        className="text-sm text-muted-foreground hover:text-primary transition-colors text-left mb-1 break-words"
-                      >
-                        {album.album.artists[0]}
-                      </button>
-                      
-                      <p className="text-xs text-muted-foreground">
-                        {(() => {
-                          const totalMinutes = Math.floor(album.total_duration_ms / 60000)
-                          const hours = Math.floor(totalMinutes / 60)
-                          const minutes = totalMinutes % 60
-                          return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
-                        })()}
-                      </p>
                     </div>
                   </div>
                 </CardContent>

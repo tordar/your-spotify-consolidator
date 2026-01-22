@@ -574,47 +574,49 @@ export default function TopArtistsPage() {
                   </div>
                   
                   {/* Mobile Layout */}
-                  <div className="md:hidden flex items-center gap-3">
+                  <div className="md:hidden flex items-start gap-3">
                     {/* Artist Image */}
                     <div className="flex-shrink-0">
                       <LazyArtistImage artist={artist.artist} rank={artist.rank} size="mobile" />
                     </div>
                     
                     {/* Artist Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <RankingMovement
-                          currentRank={artist.rank}
-                          rank30DaysAgo={artist.rank_30_days_ago}
-                          currentCount={artist.count}
-                          count30DaysAgo={artist.count_30_days_ago}
-                          size="sm"
-                          type="rank"
-                        />
-                        <RankingMovement
-                          currentRank={artist.rank}
-                          rank30DaysAgo={artist.rank_30_days_ago}
-                          currentCount={artist.count}
-                          count30DaysAgo={artist.count_30_days_ago}
-                          size="sm"
-                          type="playCount"
-                        />
-                      </div>
-                      
-                      <h3 className="font-semibold text-sm leading-tight group-hover:text-primary transition-colors mb-1 break-words">
-                        {artist.artist.name}
-                      </h3>
-                      
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{artist.differents} songs</span>
-                        <span>
-                          {(() => {
-                            const totalMinutes = Math.floor(artist.total_duration_ms / 60000)
-                            const hours = Math.floor(totalMinutes / 60)
-                            const minutes = totalMinutes % 60
-                            return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
-                          })()}
-                        </span>
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <RankingMovement
+                            currentRank={artist.rank}
+                            rank30DaysAgo={artist.rank_30_days_ago}
+                            currentCount={artist.count}
+                            count30DaysAgo={artist.count_30_days_ago}
+                            size="sm"
+                            type="rank"
+                          />
+                          <h3 className="font-semibold text-sm leading-tight group-hover:text-primary transition-colors mt-1 break-words">
+                            {artist.artist.name}
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            {artist.differents} songs
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end ml-2 flex-shrink-0">
+                          <RankingMovement
+                            currentRank={artist.rank}
+                            rank30DaysAgo={artist.rank_30_days_ago}
+                            currentCount={artist.count}
+                            count30DaysAgo={artist.count_30_days_ago}
+                            size="sm"
+                            type="playCount"
+                          />
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {(() => {
+                              const totalMinutes = Math.floor(artist.total_duration_ms / 60000)
+                              const hours = Math.floor(totalMinutes / 60)
+                              const minutes = totalMinutes % 60
+                              return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+                            })()}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>

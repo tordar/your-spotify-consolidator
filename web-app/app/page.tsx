@@ -466,12 +466,12 @@ export default function StatsPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="mb-4">Top Songs, Artists & Albums by Year</CardTitle>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid grid-cols-5 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-12 gap-2">
                       {availableYears.map((year) => (
                         <button
                           key={year}
                           onClick={() => setSelectedYear(year)}
-                          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                          className={`w-full px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                             selectedYear === year
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-muted text-muted-foreground hover:bg-muted/80'

@@ -513,6 +513,37 @@ export class Consolidator {
           existing.yearly_play_time = album.yearly_play_time;
         }
         
+        // Prefer older release_date when consolidating albums
+        const existingReleaseDate = existing.album.release_date;
+        const incomingReleaseDate = album.album.release_date;
+        
+        if (incomingReleaseDate && incomingReleaseDate !== '') {
+          if (existingReleaseDate && existingReleaseDate !== '') {
+            // Compare dates: prefer the older one
+            const existingDate = new Date(existingReleaseDate).getTime();
+            const incomingDate = new Date(incomingReleaseDate).getTime();
+            if (!isNaN(existingDate) && !isNaN(incomingDate)) {
+              // Keep the older release_date
+              if (incomingDate < existingDate) {
+                // Incoming date is older, use it
+                existing.album.release_date = incomingReleaseDate;
+                existing.album.release_date_precision = album.album.release_date_precision || existing.album.release_date_precision;
+              }
+              // Otherwise keep existing (older) date
+            } else {
+              // If date parsing fails, prefer the one that exists
+              if (!existingReleaseDate || existingReleaseDate === '') {
+                existing.album.release_date = incomingReleaseDate;
+                existing.album.release_date_precision = album.album.release_date_precision || existing.album.release_date_precision;
+              }
+            }
+          } else {
+            // No existing date, use incoming date
+            existing.album.release_date = incomingReleaseDate;
+            existing.album.release_date_precision = album.album.release_date_precision || existing.album.release_date_precision;
+          }
+        }
+        
         // Always try to get the base album name for both existing and incoming albums
         const existingBaseName = this.rulesManager.getBaseAlbumName(existing.album.name, firstArtist) ||
                                  this.rulesManager.getBaseAlbumName(this.rulesManager.normalizeAlbumName(existing.album.name, firstArtist), firstArtist);

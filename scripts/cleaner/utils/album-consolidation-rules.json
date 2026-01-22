@@ -187,6 +187,14 @@
     },
     {
       "artistName": "Kendrick Lamar",
+      "baseAlbumName": "good kid, m.A.A.d city",
+      "variations": [
+        "good kid, m.a.a.d city (Deluxe)",
+        "good kid, m.a.a.d city"
+      ]
+    },
+    {
+      "artistName": "Kendrick Lamar",
       "baseAlbumName": "untitled unmastered.",
       "variations": [
         "untitled unmastered.",
@@ -6392,10 +6400,10 @@
     },
     {
       "artistName": "Tycho",
-      "baseAlbumName": "Awake (Deluxe Version)",
+      "baseAlbumName": "Awake",
       "variations": [
         "awake (deluxe version)",
-        "awake (deluxe version)"
+        "awake"
       ]
     },
     {
@@ -6404,14 +6412,6 @@
       "variations": [
         "dive",
         "dive"
-      ]
-    },
-    {
-      "artistName": "Tycho",
-      "baseAlbumName": "Awake",
-      "variations": [
-        "awake",
-        "awake"
       ]
     },
     {
@@ -7878,6 +7878,14 @@
       "variations": [
         "leak 04-13 (bait ones)",
         "leak 04-13 (bait ones)"
+      ]
+    },
+    {
+      "artistName": "Paul Simon",
+      "baseAlbumName": "Graceland",
+      "variations": [
+        "graceland (25th anniversary deluxe edition)",
+        "graceland"
       ]
     },
     {
@@ -9910,7 +9918,7 @@
     },
     {
       "artistName": "Citizen",
-      "baseAlbumName": "Life In Your Glass World (Deluxe Edition)",
+      "baseAlbumName": "Life In Your Glass World",
       "variations": [
         "life in your glass world (deluxe edition)",
         "life in your glass world"
@@ -10080,7 +10088,7 @@
     },
     {
       "artistName": "Oasis",
-      "baseAlbumName": "Definitely Maybe (Deluxe Edition Remastered)",
+      "baseAlbumName": "Definitely Maybe",
       "variations": [
         "definitely maybe (deluxe edition remastered)",
         "definitely maybe",
@@ -10111,16 +10119,6 @@
       "variations": [
         "the head on the door (remastered)",
         "the head on the door"
-      ]
-    },
-    {
-      "artistName": "Tycho",
-      "baseAlbumName": "Awake (Deluxe Version)",
-      "variations": [
-        "awake (deluxe version)",
-        "awake",
-        "awake",
-        "awake (deluxe version)"
       ]
     },
     {
@@ -12920,14 +12918,6 @@
       "variations": [
         "rare",
         "rare"
-      ]
-    },
-    {
-      "artistName": "Tycho",
-      "baseAlbumName": "Awake (Deluxe Version)",
-      "variations": [
-        "awake (deluxe version)",
-        "awake (deluxe version)"
       ]
     },
     {
@@ -16413,14 +16403,6 @@
       ]
     },
     {
-      "artistName": "Citizen",
-      "baseAlbumName": "Life In Your Glass World",
-      "variations": [
-        "life in your glass world (deluxe edition)",
-        "life in your glass world"
-      ]
-    },
-    {
       "artistName": "Bad Religion",
       "baseAlbumName": "No Control",
       "variations": [
@@ -16583,15 +16565,6 @@
     },
     {
       "artistName": "Oasis",
-      "baseAlbumName": "Definitely Maybe",
-      "variations": [
-        "definitely maybe (deluxe edition remastered)",
-        "definitely maybe",
-        "definitely maybe (remastered deluxe)"
-      ]
-    },
-    {
-      "artistName": "Oasis",
       "baseAlbumName": "Be Here Now",
       "variations": [
         "be here now (deluxe remastered edition)",
@@ -16614,16 +16587,6 @@
       "variations": [
         "the head on the door (remastered)",
         "the head on the door"
-      ]
-    },
-    {
-      "artistName": "Tycho",
-      "baseAlbumName": "Awake",
-      "variations": [
-        "awake (deluxe version)",
-        "awake",
-        "awake",
-        "awake (deluxe version)"
       ]
     },
     {
@@ -24043,14 +24006,6 @@
     },
     {
       "artistName": "Tycho",
-      "baseAlbumName": "Awake (Deluxe Version)",
-      "variations": [
-        "awake (deluxe version)",
-        "awake (deluxe version)"
-      ]
-    },
-    {
-      "artistName": "Tycho",
       "baseAlbumName": "Dive",
       "variations": [
         "dive",
@@ -27544,14 +27499,6 @@
       ]
     },
     {
-      "artistName": "Citizen",
-      "baseAlbumName": "Life In Your Glass World (Deluxe Edition)",
-      "variations": [
-        "life in your glass world (deluxe edition)",
-        "life in your glass world"
-      ]
-    },
-    {
       "artistName": "Bad Religion",
       "baseAlbumName": "No Control",
       "variations": [
@@ -27706,15 +27653,6 @@
     },
     {
       "artistName": "Oasis",
-      "baseAlbumName": "Definitely Maybe (Deluxe Edition Remastered)",
-      "variations": [
-        "definitely maybe (deluxe edition remastered)",
-        "definitely maybe",
-        "definitely maybe (remastered deluxe)"
-      ]
-    },
-    {
-      "artistName": "Oasis",
       "baseAlbumName": "Be Here Now (Deluxe Remastered Edition)",
       "variations": [
         "be here now (deluxe remastered edition)",
@@ -27737,16 +27675,6 @@
       "variations": [
         "the head on the door (remastered)",
         "the head on the door"
-      ]
-    },
-    {
-      "artistName": "Tycho",
-      "baseAlbumName": "Awake (Deluxe Version)",
-      "variations": [
-        "awake (deluxe version)",
-        "awake",
-        "awake",
-        "awake (deluxe version)"
       ]
     },
     {

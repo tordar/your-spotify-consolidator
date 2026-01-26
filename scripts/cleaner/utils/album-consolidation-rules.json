@@ -2143,6 +2143,15 @@
     },
     {
       "artistName": "The Stooges",
+      "baseAlbumName": "Funhouse",
+      "variations": [
+        "funhouse",
+        "fun house",
+        "fun house (deluxe edition)"
+      ]
+    },
+    {
+      "artistName": "The Stooges",
       "baseAlbumName": "Raw Power",
       "variations": [
         "raw power",

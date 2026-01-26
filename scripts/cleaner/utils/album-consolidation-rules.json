@@ -67,6 +67,15 @@
     },
     {
       "artistName": "David Bowie",
+      "baseAlbumName": "Station to Station",
+      "variations": [
+        "station to station",
+        "station to station (2016 remaster)",
+        "station to station (special edition)"
+      ]
+    },
+    {
+      "artistName": "David Bowie",
       "baseAlbumName": "The Next Day",
       "variations": [
         "the next day",

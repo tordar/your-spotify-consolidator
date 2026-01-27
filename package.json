@@ -9,6 +9,7 @@
     "merge-recent-data": "tsx scripts/merge-recent-data.ts",
     "merge-streaming-history": "tsx scripts/merge-streaming-history.ts",
     "generate-cleaned-files": "tsx scripts/cleaner/generate-cleaned-files-from-history.ts",
+    "add-podcast-data": "tsx scripts/add-podcast-data-to-stats.ts",
     "create-metadata": "tsx scripts/create-metadata.ts",
     "setup-spotify-auth": "tsx scripts/setup-spotify-auth.ts",
     "test-spotify-api": "tsx scripts/test-spotify-api.ts",

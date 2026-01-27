@@ -12,6 +12,8 @@ export interface DetailedStats {
       totalListeningTimeMs?: number
       totalListeningHours?: number
       playCount?: number
+      totalPodcastListeningTimeMs?: number
+      totalPodcastListeningHours?: number
     }>
   }
 }

@@ -301,6 +301,8 @@ export interface YearlyListeningTime {
   totalListeningTimeMs: number;
   totalListeningHours: number;
   playCount: number;
+  totalPodcastListeningTimeMs?: number;
+  totalPodcastListeningHours?: number;
 }
 
 export interface TopSong {

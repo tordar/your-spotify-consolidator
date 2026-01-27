@@ -16,6 +16,8 @@ interface YearlyListeningTime {
   totalListeningTimeMs: number
   totalListeningHours: number
   playCount: number
+  totalPodcastListeningTimeMs?: number
+  totalPodcastListeningHours?: number
 }
 
 interface HourlyListeningDistribution {
@@ -150,6 +152,11 @@ export default function StatsPage() {
 
     const categories = statsData.stats.yearlyListeningTime.map(item => item.year)
     const data = statsData.stats.yearlyListeningTime.map(item => item.totalListeningHours)
+    
+    // Extract podcast data (in hours)
+    const podcastData = statsData.stats.yearlyListeningTime.map(item => 
+      item.totalPodcastListeningHours || 0
+    )
 
     // Calculate estimated hours for current year
     const currentYear = new Date().getFullYear().toString()
@@ -159,6 +166,8 @@ export default function StatsPage() {
     if (currentYearIndex !== -1) {
       const currentYearData = statsData.stats.yearlyListeningTime[currentYearIndex]
       const hoursSoFar = currentYearData.totalListeningHours
+      const podcastHoursSoFar = currentYearData.totalPodcastListeningHours || 0
+      const totalHoursSoFar = hoursSoFar + podcastHoursSoFar
       
       // Calculate day of year (1-365/366)
       const now = new Date()
@@ -170,13 +179,13 @@ export default function StatsPage() {
       const daysInYear = isLeapYear(now.getFullYear()) ? 366 : 365
       const daysRemaining = daysInYear - dayOfYear
       
-      // Calculate estimated additional hours: (hours so far / day of year) * days remaining
-      const estimatedAdditionalHours = (hoursSoFar / dayOfYear) * daysRemaining
-      const estimatedTotalHours = hoursSoFar + estimatedAdditionalHours
+      // Calculate estimated additional hours: (total hours so far / day of year) * days remaining
+      const estimatedAdditionalHours = (totalHoursSoFar / dayOfYear) * daysRemaining
+      const estimatedTotalHours = totalHoursSoFar + estimatedAdditionalHours
       
       // Set estimated data to show the estimated TOTAL (will be stacked on top of actual)
       // Since we're stacking, we need to subtract actual from total to get the height of the estimated bar
-      estimatedData[currentYearIndex] = estimatedTotalHours - hoursSoFar
+      estimatedData[currentYearIndex] = estimatedTotalHours - totalHoursSoFar
     }
 
     // Get theme colors
@@ -191,6 +200,7 @@ export default function StatsPage() {
     const cardColor = card ? `rgb(${card})` : '#ffffff'
     const borderColor = border ? `rgb(${border})` : '#e5e7eb'
     const primaryColor = primary ? `rgb(${primary})` : '#4f46e5'
+    const podcastColor = '#a855f7' // purple-500
 
     return {
       chart: {
@@ -256,13 +266,22 @@ export default function StatsPage() {
           const year = categories[pointIndex] || String(this.x)
           
           if (this.series.name === 'Estimated (Projected)') {
-            // Calculate estimated total: actual hours + estimated additional hours
+            // Calculate estimated total: actual hours + podcast hours + estimated additional hours
             const actualHours = data[pointIndex] || 0
+            const podcastHours = podcastData[pointIndex] || 0
             const estimatedAdditional = this.y as number
-            const estimatedTotal = actualHours + estimatedAdditional
+            const estimatedTotal = actualHours + podcastHours + estimatedAdditional
             return `<b>${year} (Estimated Total)</b><br/>${estimatedTotal.toFixed(2)} hours<br/><span style="color: ${mutedColor}">Projected if current pace continues</span>`
+          } else if (this.series.name === 'Podcast Hours') {
+            const podcastHours = this.y as number
+            const musicHours = data[pointIndex] || 0
+            const totalHours = musicHours + podcastHours
+            return `<b>${year}</b><br/>Podcast: ${podcastHours.toFixed(2)} hours<br/>Music: ${musicHours.toFixed(2)} hours<br/>Total: ${totalHours.toFixed(2)} hours`
           } else {
-            return `<b>${year}</b><br/>${this.y?.toFixed(2)} hours`
+            const musicHours = this.y as number
+            const podcastHours = podcastData[pointIndex] || 0
+            const totalHours = musicHours + podcastHours
+            return `<b>${year}</b><br/>Music: ${musicHours.toFixed(2)} hours${podcastHours > 0 ? `<br/>Podcast: ${podcastHours.toFixed(2)} hours<br/>Total: ${totalHours.toFixed(2)} hours` : ''}`
           }
         }
       },
@@ -283,6 +302,12 @@ export default function StatsPage() {
           data: data,
           type: 'column',
           color: primaryColor
+        },
+        {
+          name: 'Podcast Hours',
+          data: podcastData,
+          type: 'column',
+          color: podcastColor
         },
         {
           name: 'Estimated (Projected)',

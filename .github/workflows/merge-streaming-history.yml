@@ -42,6 +42,19 @@ jobs:
         if: steps.check-files.outputs.files_exist == 'true'
         run: npm run merge-streaming-history
         
+      - name: Generate cleaned and consolidated data files
+        if: steps.check-files.outputs.files_exist == 'true'
+        env:
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+          SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+        run: npm run generate-cleaned-files
+        
+      - name: Add podcast data to stats
+        if: steps.check-files.outputs.files_exist == 'true'
+        run: npm run add-podcast-data
+        
       - name: Upload merged data
         if: steps.check-files.outputs.files_exist == 'true'
         uses: actions/upload-artifact@v4
@@ -62,12 +75,12 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          if [ -d "data/merged-streaming-history" ]; then
-            git add data/merged-streaming-history/
+          if [ -d "data/merged-streaming-history" ] || [ -d "data/cleaned-data" ]; then
+            git add data/merged-streaming-history/ data/cleaned-data/
             if git diff --staged --quiet; then
               echo "No changes to commit"
             else
-              git commit -m "Auto-merge streaming history data [skip ci]"
+              git commit -m "Auto-merge streaming history data and regenerate cleaned files [skip ci]"
               git push
             fi
           fi

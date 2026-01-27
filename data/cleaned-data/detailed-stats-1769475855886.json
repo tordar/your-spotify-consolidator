@@ -9,109 +9,145 @@
         "year": "2009",
         "totalListeningTimeMs": 1220628,
         "totalListeningHours": 0.34,
-        "playCount": 20
+        "playCount": 20,
+        "totalPodcastListeningTimeMs": 0,
+        "totalPodcastListeningHours": 0
       },
       {
         "year": "2010",
         "totalListeningTimeMs": 252346242,
         "totalListeningHours": 70.1,
-        "playCount": 2676
+        "playCount": 2676,
+        "totalPodcastListeningTimeMs": 0,
+        "totalPodcastListeningHours": 0
       },
       {
         "year": "2011",
         "totalListeningTimeMs": 320262360,
         "totalListeningHours": 88.96,
-        "playCount": 2495
+        "playCount": 2495,
+        "totalPodcastListeningTimeMs": 0,
+        "totalPodcastListeningHours": 0
       },
       {
         "year": "2012",
         "totalListeningTimeMs": 459853368,
         "totalListeningHours": 127.74,
-        "playCount": 2985
+        "playCount": 2985,
+        "totalPodcastListeningTimeMs": 0,
+        "totalPodcastListeningHours": 0
       },
       {
         "year": "2013",
         "totalListeningTimeMs": 1835978094,
         "totalListeningHours": 509.99,
-        "playCount": 11166
+        "playCount": 11166,
+        "totalPodcastListeningTimeMs": 0,
+        "totalPodcastListeningHours": 0
       },
       {
         "year": "2014",
         "totalListeningTimeMs": 2254921017,
         "totalListeningHours": 626.37,
-        "playCount": 13715
+        "playCount": 13715,
+        "totalPodcastListeningTimeMs": 0,
+        "totalPodcastListeningHours": 0
       },
       {
         "year": "2015",
         "totalListeningTimeMs": 1828809773,
         "totalListeningHours": 508,
-        "playCount": 10896
+        "playCount": 10896,
+        "totalPodcastListeningTimeMs": 0,
+        "totalPodcastListeningHours": 0
       },
       {
         "year": "2016",
         "totalListeningTimeMs": 1282283655,
         "totalListeningHours": 356.19,
-        "playCount": 7002
+        "playCount": 7002,
+        "totalPodcastListeningTimeMs": 0,
+        "totalPodcastListeningHours": 0
       },
       {
         "year": "2017",
         "totalListeningTimeMs": 3254155294,
         "totalListeningHours": 903.93,
-        "playCount": 17818
+        "playCount": 17818,
+        "totalPodcastListeningTimeMs": 13440798,
+        "totalPodcastListeningHours": 3.73
       },
       {
         "year": "2018",
         "totalListeningTimeMs": 3040009843,
         "totalListeningHours": 844.45,
-        "playCount": 16821
+        "playCount": 16821,
+        "totalPodcastListeningTimeMs": 207605131,
+        "totalPodcastListeningHours": 57.67
       },
       {
         "year": "2019",
         "totalListeningTimeMs": 2884176413,
         "totalListeningHours": 801.16,
-        "playCount": 15421
+        "playCount": 15421,
+        "totalPodcastListeningTimeMs": 185960038,
+        "totalPodcastListeningHours": 51.66
       },
       {
         "year": "2020",
         "totalListeningTimeMs": 2632737416,
         "totalListeningHours": 731.32,
-        "playCount": 13811
+        "playCount": 13811,
+        "totalPodcastListeningTimeMs": 634712870,
+        "totalPodcastListeningHours": 176.31
       },
       {
         "year": "2021",
         "totalListeningTimeMs": 1986033351,
         "totalListeningHours": 551.68,
-        "playCount": 11377
+        "playCount": 11377,
+        "totalPodcastListeningTimeMs": 790777216,
+        "totalPodcastListeningHours": 219.66
       },
       {
         "year": "2022",
         "totalListeningTimeMs": 2206935501,
         "totalListeningHours": 613.04,
-        "playCount": 13302
+        "playCount": 13302,
+        "totalPodcastListeningTimeMs": 277973642,
+        "totalPodcastListeningHours": 77.21
       },
       {
         "year": "2023",
         "totalListeningTimeMs": 2726706211,
         "totalListeningHours": 757.42,
-        "playCount": 16382
+        "playCount": 16382,
+        "totalPodcastListeningTimeMs": 573339998,
+        "totalPodcastListeningHours": 159.26
       },
       {
         "year": "2024",
         "totalListeningTimeMs": 1979480635,
         "totalListeningHours": 549.86,
-        "playCount": 11678
+        "playCount": 11678,
+        "totalPodcastListeningTimeMs": 480026721,
+        "totalPodcastListeningHours": 133.34
       },
       {
         "year": "2025",
         "totalListeningTimeMs": 2542553818,
         "totalListeningHours": 706.26,
-        "playCount": 13769
+        "playCount": 13769,
+        "totalPodcastListeningTimeMs": 86530490,
+        "totalPodcastListeningHours": 24.04
       },
       {
         "year": "2026",
         "totalListeningTimeMs": 193371028,
         "totalListeningHours": 53.71,
-        "playCount": 894
+        "playCount": 894,
+        "totalPodcastListeningTimeMs": 0,
+        "totalPodcastListeningHours": 0
       }
     ],
     "yearlyTopItems": [

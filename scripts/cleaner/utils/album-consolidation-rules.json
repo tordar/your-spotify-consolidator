@@ -9638,7 +9638,7 @@
     },
     {
       "artistName": "David Bowie",
-      "baseAlbumName": "Diamond Dogs (2016 Remaster)",
+      "baseAlbumName": "Diamond Dogs",
       "variations": [
         "diamond dogs (2016 remaster)",
         "diamond dogs"
@@ -9646,7 +9646,7 @@
     },
     {
       "artistName": "David Bowie",
-      "baseAlbumName": "Hunky Dory (2015 Remaster)",
+      "baseAlbumName": "Hunky Dory",
       "variations": [
         "hunky dory (2015 remaster)",
         "hunky dory"
@@ -9654,7 +9654,7 @@
     },
     {
       "artistName": "David Bowie",
-      "baseAlbumName": "Low (2017 Remaster)",
+      "baseAlbumName": "Low",
       "variations": [
         "low (2017 remaster)",
         "low (1999 remaster)"
@@ -9662,7 +9662,7 @@
     },
     {
       "artistName": "David Bowie",
-      "baseAlbumName": "Let's Dance (1999 Remaster)",
+      "baseAlbumName": "Let's Dance",
       "variations": [
         "let's dance (1999 remaster)",
         "let's dance (2018 remaster)"
@@ -9670,7 +9670,7 @@
     },
     {
       "artistName": "David Bowie",
-      "baseAlbumName": "Scary Monsters (And Super Creeps) [2017 Remaster]",
+      "baseAlbumName": "Scary Monsters (And Super Creeps)",
       "variations": [
         "scary monsters (and super creeps) [2017 remaster]",
         "scary monsters"
@@ -9678,7 +9678,7 @@
     },
     {
       "artistName": "David Bowie",
-      "baseAlbumName": "Aladdin Sane (2013 Remaster)",
+      "baseAlbumName": "Aladdin Sane",
       "variations": [
         "aladdin sane (2013 remaster)",
         "aladdin sane (40th anniversary)"
@@ -9686,7 +9686,7 @@
     },
     {
       "artistName": "David Bowie",
-      "baseAlbumName": "Tonight (1999 Remaster)",
+      "baseAlbumName": "Tonight",
       "variations": [
         "tonight (1999 remaster)",
         "tonight (2018 remaster)"
@@ -9702,7 +9702,7 @@
     },
     {
       "artistName": "David Bowie",
-      "baseAlbumName": "The Man Who Sold the World (2015 Remaster)",
+      "baseAlbumName": "The Man Who Sold the World",
       "variations": [
         "the man who sold the world (2015 remaster)",
         "the man who sold the world"
@@ -27211,62 +27211,6 @@
     },
     {
       "artistName": "David Bowie",
-      "baseAlbumName": "Diamond Dogs (2016 Remaster)",
-      "variations": [
-        "diamond dogs (2016 remaster)",
-        "diamond dogs"
-      ]
-    },
-    {
-      "artistName": "David Bowie",
-      "baseAlbumName": "Hunky Dory (2015 Remaster)",
-      "variations": [
-        "hunky dory (2015 remaster)",
-        "hunky dory"
-      ]
-    },
-    {
-      "artistName": "David Bowie",
-      "baseAlbumName": "Low (2017 Remaster)",
-      "variations": [
-        "low (2017 remaster)",
-        "low (1999 remaster)"
-      ]
-    },
-    {
-      "artistName": "David Bowie",
-      "baseAlbumName": "Let's Dance (1999 Remaster)",
-      "variations": [
-        "let's dance (1999 remaster)",
-        "let's dance (2018 remaster)"
-      ]
-    },
-    {
-      "artistName": "David Bowie",
-      "baseAlbumName": "Scary Monsters (And Super Creeps) [2017 Remaster]",
-      "variations": [
-        "scary monsters (and super creeps) [2017 remaster]",
-        "scary monsters"
-      ]
-    },
-    {
-      "artistName": "David Bowie",
-      "baseAlbumName": "Aladdin Sane (2013 Remaster)",
-      "variations": [
-        "aladdin sane (2013 remaster)",
-        "aladdin sane (40th anniversary)"
-      ]
-    },
-    {
-      "artistName": "David Bowie",
-      "baseAlbumName": "Tonight (1999 Remaster)",
-      "variations": [
-        "tonight (1999 remaster)",
-        "tonight (2018 remaster)"
-      ]
-    },
-    {
-      "artistName": "David Bowie",
       "baseAlbumName": "A Reality Tour (Live)",
       "variations": [
         "a reality tour (live)",
@@ -27275,7 +27219,7 @@
     },
     {
       "artistName": "David Bowie",
-      "baseAlbumName": "David Bowie (aka Space Oddity) [2015 Remaster]",
+      "baseAlbumName": "David Bowie (aka Space Oddity)",
       "variations": [
         "david bowie (aka space oddity) [2015 remaster]",
         "david bowie",
@@ -27284,7 +27228,7 @@
     },
     {
       "artistName": "David Bowie",
-      "baseAlbumName": "The Man Who Sold the World (2015 Remaster)",
+      "baseAlbumName": "The Man Who Sold the World",
       "variations": [
         "the man who sold the world (2015 remaster)",
         "the man who sold the world"

@@ -76,6 +76,22 @@
     },
     {
       "artistName": "David Bowie",
+      "baseAlbumName": "Young Americans",
+      "variations": [
+        "young americans",
+        "young americans (2016 remaster)"
+      ]
+    },
+    {
+      "artistName": "David Bowie",
+      "baseAlbumName": "\"Heroes\"",
+      "variations": [
+        "\"heroes\"",
+        "\"heroes\" (2016 remaster)"
+      ]
+    },
+    {
+      "artistName": "David Bowie",
       "baseAlbumName": "The Next Day",
       "variations": [
         "the next day",

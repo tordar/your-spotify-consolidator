@@ -307,7 +307,8 @@ export default function StatsPage() {
           name: 'Podcast Hours',
           data: podcastData,
           type: 'column',
-          color: podcastColor
+          color: podcastColor,
+          visible: false
         },
         {
           name: 'Estimated (Projected)',

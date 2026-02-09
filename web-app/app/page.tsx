@@ -10,7 +10,7 @@ import HighchartsReact from 'highcharts-react-official'
 import { Music2, Users, Play, Clock, Globe, X } from 'lucide-react'
 import { StatsSkeleton } from '@/components/SkeletonLoader'
 import { getCountryName } from '@/lib/country-names'
-import 'cal-heatmap/cal-heatmap.css'
+import { ListeningHeatmap } from '@/components/Heatmap'
 
 interface YearlyListeningTime {
   year: string
@@ -128,8 +128,6 @@ export default function StatsPage() {
   const [expandedHeatmapAlbum, setExpandedHeatmapAlbum] = useState<string | null>(null) // key: `${artist}|${album}`
   const chartComponentRef = useRef<HighchartsReact.RefObject>(null)
   const hourlyChartComponentRef = useRef<HighchartsReact.RefObject>(null)
-  const heatmapRef = useRef<{ destroy: () => Promise<unknown>; on?: (name: string, fn: (...args: unknown[]) => void) => void } | null>(null)
-  
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -188,154 +186,6 @@ export default function StatsPage() {
     return () => { cancelled = true }
   }, [selectedHeatmapYear])
 
-  // Paint Cal-Heatmap when mounted and daily listening data is available
-  useEffect(() => {
-    if (!mounted || !dailyListening) return
-    let cancelled = false
-    const run = async () => {
-      const calHeatmapMod = await import('cal-heatmap')
-      type CalHeatmapCtor = new () => { paint: (o: unknown, p?: unknown) => Promise<unknown>; destroy: () => Promise<unknown> }
-      const CalHeatmap = ((calHeatmapMod as { default?: CalHeatmapCtor }).default ?? calHeatmapMod) as CalHeatmapCtor
-      // @ts-expect-error cal-heatmap plugin subpath may not be in types
-      const tooltipMod = await import('cal-heatmap/plugins/Tooltip').catch(() => null)
-      const TooltipPlugin = tooltipMod
-        ? (tooltipMod as { default?: unknown }).default ?? tooltipMod
-        : null
-      if (cancelled) return
-      const cal = new CalHeatmap()
-      heatmapRef.current = cal
-      const year = dailyListening.years[0] ?? new Date().getFullYear()
-      const startOfYear = new Date(Date.UTC(year, 0, 1))
-      const isCurrentYear = year === new Date().getFullYear()
-      const endOfRange = isCurrentYear
-        ? new Date()
-        : new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999))
-      const maxVal = dailyListening.data.length
-        ? Math.max(...dailyListening.data.map((d) => d.value), 1)
-        : 1
-      await cal.paint(
-        {
-          itemSelector: '#listening-heatmap',
-          range: 1,
-          domain: { type: 'year' },
-          subDomain: {
-            type: 'day',
-            width: 22,
-            height: 22,
-            gutter: 4,
-          },
-          date: {
-            start: startOfYear,
-            min: startOfYear,
-            max: endOfRange,
-            timezone: 'UTC',
-          },
-          data: {
-            source: dailyListening.data,
-            type: 'json',
-            x: 'date',
-            y: 'value',
-            groupY: 'sum',
-          },
-          scale: {
-            color: {
-              // 0 = empty; (0, maxVal] = low→high gradient (light = less, dark = more)
-              domain: [0, 1, maxVal],
-              type: 'linear',
-              range: [
-                'var(--heatmap-empty)',
-                '#86efac', // less listening
-                '#14532d', // more listening
-              ],
-            },
-          },
-        },
-        TooltipPlugin
-          ? [
-              [
-                TooltipPlugin,
-                {
-                  text: (timestamp: number, value: number, dayjsDate: { format: (f: string) => string }) => {
-                    const totalMinutes = Math.floor(value / 60000)
-                    const hours = Math.floor(totalMinutes / 60)
-                    const minutes = totalMinutes % 60
-                    const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
-                    const dayRecord = dailyListening.data.find((d) => d.date === timestamp)
-                    const plays = dayRecord?.plays ?? []
-                    const songCount = new Set(plays.map((p) => p.songName)).size
-                    const artistCount = new Set(plays.flatMap((p) => p.artists)).size
-                    const parts = [`${dayjsDate.format('MMM D, YYYY')}: ${timeStr}`]
-                    if (songCount || artistCount) {
-                      parts.push(`${songCount} song${songCount !== 1 ? 's' : ''}, ${artistCount} artist${artistCount !== 1 ? 's' : ''}`)
-                    }
-                    return parts.join('<br/>')
-                  },
-                },
-              ],
-            ]
-          : undefined
-      )
-
-      // Scale SVG to fit container. Desktop: fit within width, no overflow. Mobile: allow scale-by-height so heatmap is taller (horizontal scroll).
-      const scaleSvgToFit = () => {
-        const el = document.getElementById('listening-heatmap')
-        const svg = el?.querySelector('svg')
-        if (!el || !svg || cancelled) return
-        const containerW = el.clientWidth
-        const containerH = el.clientHeight
-        const intrinsicW = Number(svg.getAttribute('width')) || svg.getBoundingClientRect().width || containerW
-        const intrinsicH = Number(svg.getAttribute('height')) || svg.getBoundingClientRect().height || 200
-        if (intrinsicW <= 0 || intrinsicH <= 0) return
-        const isNarrowViewport = typeof window !== 'undefined' && window.innerWidth < 768
-        let newW: number
-        let newH: number
-        if (containerW > 0) {
-          newH = Math.round(intrinsicH * (containerW / intrinsicW))
-          newW = containerW
-          // If container has more height, scale by height so heatmap fills it. On desktop only do this if result still fits width (no overflow).
-          if (containerH > 0 && newH < containerH) {
-            const candidateW = Math.round(intrinsicW * (containerH / intrinsicH))
-            if (isNarrowViewport || candidateW <= containerW) {
-              newH = containerH
-              newW = candidateW
-            }
-          }
-        } else {
-          newW = intrinsicW
-          newH = intrinsicH
-        }
-        svg.setAttribute('viewBox', `0 0 ${intrinsicW} ${intrinsicH}`)
-        svg.setAttribute('width', String(newW))
-        svg.setAttribute('height', String(newH))
-      }
-      requestAnimationFrame(() => {
-        requestAnimationFrame(scaleSvgToFit)
-      })
-
-      const calWithOn = cal as unknown as { on: (name: string, fn: (...args: unknown[]) => void) => void }
-      if (typeof calWithOn.on === 'function') {
-        calWithOn.on('click', (_ev: unknown, timestamp: number) => {
-        if (cancelled) return
-        const dayRecord = dailyListening.data.find((d) => d.date === timestamp)
-        if (dayRecord) {
-          setSelectedDay({
-            date: dayRecord.date,
-            value: dayRecord.value,
-            plays: dayRecord.plays ?? [],
-          })
-        }
-      })
-      }
-    }
-    run()
-    return () => {
-      cancelled = true
-      setSelectedDay(null)
-      setExpandedHeatmapArtist(null)
-      heatmapRef.current?.destroy()
-      heatmapRef.current = null
-    }
-  }, [mounted, dailyListening])
 
   // Prepare chart options for yearly listening hours
   const getChartOptions = (): Highcharts.Options => {
@@ -991,8 +841,16 @@ export default function StatsPage() {
                       {dailyListening.data.length === 0 && (
                         <p className="text-muted-foreground text-sm mb-3">No listening data for {selectedHeatmapYear}.</p>
                       )}
-                      <div className="overflow-x-auto -mx-1 md:overflow-visible md:mx-0">
-                        <div id="listening-heatmap" className="min-h-[200px] md:min-h-[150px] w-full min-w-[600px] md:min-w-0" />
+                      <div className="overflow-x-auto -mx-1 md:overflow-visible md:mx-0 min-h-[200px] md:min-h-[200px] w-full block">
+                        <ListeningHeatmap
+                          year={selectedHeatmapYear}
+                          data={dailyListening.data}
+                          formatDuration={formatDuration}
+                          onDayClick={(day) => {
+                            setSelectedDay({ date: day.date, value: day.value, plays: day.plays ?? [] })
+                          }}
+                          className="min-w-[600px] md:min-w-0 md:w-full md:max-w-full"
+                        />
                       </div>
                       {selectedDay && (() => {
                         const totalPlays = selectedDay.plays.length

@@ -276,20 +276,33 @@ export default function StatsPage() {
           : undefined
       )
 
-      // Force SVG to fit container width so full year is visible and nothing is clipped
+      // Scale SVG to fit container: fit width on desktop; on mobile use container height so heatmap is taller
       const scaleSvgToFit = () => {
         const el = document.getElementById('listening-heatmap')
         const svg = el?.querySelector('svg')
         if (!el || !svg || cancelled) return
         const containerW = el.clientWidth
+        const containerH = el.clientHeight
         const intrinsicW = Number(svg.getAttribute('width')) || svg.getBoundingClientRect().width || containerW
         const intrinsicH = Number(svg.getAttribute('height')) || svg.getBoundingClientRect().height || 200
-        if (intrinsicW > 0 && containerW > 0) {
-          const newH = Math.round(intrinsicH * (containerW / intrinsicW))
-          svg.setAttribute('viewBox', `0 0 ${intrinsicW} ${intrinsicH}`)
-          svg.setAttribute('width', String(containerW))
-          svg.setAttribute('height', String(newH))
+        if (intrinsicW <= 0 || intrinsicH <= 0) return
+        let newW: number
+        let newH: number
+        if (containerW > 0) {
+          newH = Math.round(intrinsicH * (containerW / intrinsicW))
+          newW = containerW
+          // If container has more height (e.g. mobile min-height), scale by height so heatmap fills it
+          if (containerH > 0 && newH < containerH) {
+            newH = containerH
+            newW = Math.round(intrinsicW * (containerH / intrinsicH))
+          }
+        } else {
+          newW = intrinsicW
+          newH = intrinsicH
         }
+        svg.setAttribute('viewBox', `0 0 ${intrinsicW} ${intrinsicH}`)
+        svg.setAttribute('width', String(newW))
+        svg.setAttribute('height', String(newH))
       }
       requestAnimationFrame(() => {
         requestAnimationFrame(scaleSvgToFit)
@@ -942,8 +955,8 @@ export default function StatsPage() {
                 </Card>
               ) : null}
 
-              {/* Year-to-date listening heatmap (hidden on small screens) */}
-              <Card className="hidden md:block">
+              {/* Year-to-date listening heatmap (scrollable horizontally on mobile) */}
+              <Card>
                 <CardHeader>
                   <CardTitle className="mb-4">Listening activity</CardTitle>
                   <div className="flex flex-wrap items-center gap-2">
@@ -974,7 +987,9 @@ export default function StatsPage() {
                       {dailyListening.data.length === 0 && (
                         <p className="text-muted-foreground text-sm mb-3">No listening data for {selectedHeatmapYear}.</p>
                       )}
-                      <div id="listening-heatmap" className="min-h-[200px] w-full" />
+                      <div className="overflow-x-auto -mx-1 md:overflow-visible md:mx-0">
+                        <div id="listening-heatmap" className="min-h-[200px] md:min-h-[200px] w-full min-w-[600px] md:min-w-0" />
+                      </div>
                       {selectedDay && (() => {
                         const totalPlays = selectedDay.plays.length
                         const byArtist = new Map<string, { playCount: number; albums: Map<string, Set<string>> }>()
@@ -1056,7 +1071,7 @@ export default function StatsPage() {
                                           {a.name}
                                         </span>
                                         <span className="shrink-0 text-muted-foreground">
-                                          {a.percentage.toFixed(1)}% ({a.playCount} plays, {a.songCount} song{a.songCount !== 1 ? 's' : ''})
+                                          {a.percentage.toFixed(1)}% ({a.playCount} plays)
                                           <span className={`ml-1 inline-block transition-transform ${expandedHeatmapArtist === a.name ? 'rotate-180' : ''}`}>
                                             ▾
                                           </span>

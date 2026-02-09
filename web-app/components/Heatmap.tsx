@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState, useCallback, useLayoutEffect, useRef } from 'react'
+import React, { useMemo, useState, useCallback, useLayoutEffect, useEffect, useRef } from 'react'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -202,6 +202,16 @@ export function ListeningHeatmap({
     setTooltip(null)
     setActiveCell(null)
   }, [])
+
+  useEffect(() => {
+    if (!tooltip || !isTouch) return
+    const onPointerDown = (e: PointerEvent) => {
+      if (rootRef.current?.contains(e.target as Node)) return
+      hideTooltip()
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [tooltip, isTouch, hideTooltip])
 
   return (
     <div

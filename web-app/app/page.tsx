@@ -841,7 +841,7 @@ export default function StatsPage() {
                       {dailyListening.data.length === 0 && (
                         <p className="text-muted-foreground text-sm mb-3">No listening data for {selectedHeatmapYear}.</p>
                       )}
-                      <div className="overflow-x-auto -mx-1 md:overflow-visible md:mx-0 min-h-[200px] md:min-h-[200px] w-full block">
+                      <div className="overflow-x-auto -mx-1 md:overflow-visible md:mx-0 min-h-0 md:min-h-[200px] w-full block">
                         <ListeningHeatmap
                           year={selectedHeatmapYear}
                           data={dailyListening.data}

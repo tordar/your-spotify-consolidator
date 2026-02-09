@@ -276,7 +276,7 @@ export default function StatsPage() {
           : undefined
       )
 
-      // Scale SVG to fit container: fit width on desktop; on mobile use container height so heatmap is taller
+      // Scale SVG to fit container. Desktop: fit within width, no overflow. Mobile: allow scale-by-height so heatmap is taller (horizontal scroll).
       const scaleSvgToFit = () => {
         const el = document.getElementById('listening-heatmap')
         const svg = el?.querySelector('svg')
@@ -286,15 +286,19 @@ export default function StatsPage() {
         const intrinsicW = Number(svg.getAttribute('width')) || svg.getBoundingClientRect().width || containerW
         const intrinsicH = Number(svg.getAttribute('height')) || svg.getBoundingClientRect().height || 200
         if (intrinsicW <= 0 || intrinsicH <= 0) return
+        const isNarrowViewport = typeof window !== 'undefined' && window.innerWidth < 768
         let newW: number
         let newH: number
         if (containerW > 0) {
           newH = Math.round(intrinsicH * (containerW / intrinsicW))
           newW = containerW
-          // If container has more height (e.g. mobile min-height), scale by height so heatmap fills it
+          // If container has more height, scale by height so heatmap fills it. On desktop only do this if result still fits width (no overflow).
           if (containerH > 0 && newH < containerH) {
-            newH = containerH
-            newW = Math.round(intrinsicW * (containerH / intrinsicH))
+            const candidateW = Math.round(intrinsicW * (containerH / intrinsicH))
+            if (isNarrowViewport || candidateW <= containerW) {
+              newH = containerH
+              newW = candidateW
+            }
           }
         } else {
           newW = intrinsicW
@@ -988,7 +992,7 @@ export default function StatsPage() {
                         <p className="text-muted-foreground text-sm mb-3">No listening data for {selectedHeatmapYear}.</p>
                       )}
                       <div className="overflow-x-auto -mx-1 md:overflow-visible md:mx-0">
-                        <div id="listening-heatmap" className="min-h-[200px] md:min-h-[200px] w-full min-w-[600px] md:min-w-0" />
+                        <div id="listening-heatmap" className="min-h-[200px] md:min-h-[150px] w-full min-w-[600px] md:min-w-0" />
                       </div>
                       {selectedDay && (() => {
                         const totalPlays = selectedDay.plays.length

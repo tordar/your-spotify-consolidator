@@ -10,11 +10,19 @@ interface ListeningEvent {
 }
 
 interface SongRecord {
+  name?: string
+  artists?: string[]
   listeningEvents?: ListeningEvent[]
 }
 
 interface MergedHistory {
   songs?: SongRecord[]
+}
+
+interface DayRecord {
+  totalMs: number
+  songs: Set<string>
+  artists: Set<string>
 }
 
 function getMergedHistoryDir(): string {
@@ -72,7 +80,7 @@ export async function GET(request: Request) {
     const fileContents = await readFile(filePath, 'utf-8')
     const data: MergedHistory = JSON.parse(fileContents)
 
-    const dayTotals = new Map<number, number>() // start-of-day timestamp (ms) -> total ms
+    const dayMap = new Map<number, DayRecord>()
     const minYear = Math.min(...years)
     const maxYear = Math.max(...years)
     const startTs = Date.UTC(minYear, 0, 1)
@@ -84,6 +92,8 @@ export async function GET(request: Request) {
 
     for (const song of data.songs) {
       const events = song.listeningEvents
+      const songName = song.name?.trim() || ''
+      const artistNames = Array.isArray(song.artists) ? song.artists.map((a) => String(a).trim()).filter(Boolean) : []
       if (!events || !Array.isArray(events)) continue
       for (const event of events) {
         const playedAt = new Date(event.playedAt).getTime()
@@ -91,13 +101,22 @@ export async function GET(request: Request) {
         const dayStart = new Date(playedAt)
         dayStart.setUTCHours(0, 0, 0, 0)
         const key = dayStart.getTime()
-        dayTotals.set(key, (dayTotals.get(key) ?? 0) + (event.msPlayed || 0))
+        let rec = dayMap.get(key)
+        if (!rec) {
+          rec = { totalMs: 0, songs: new Set(), artists: new Set() }
+          dayMap.set(key, rec)
+        }
+        rec.totalMs += event.msPlayed || 0
+        if (songName) rec.songs.add(songName)
+        artistNames.forEach((a) => rec!.artists.add(a))
       }
     }
 
-    const dataArray = Array.from(dayTotals.entries()).map(([date, value]) => ({
+    const dataArray = Array.from(dayMap.entries()).map(([date, rec]) => ({
       date,
-      value,
+      value: rec.totalMs,
+      songs: Array.from(rec.songs).sort(),
+      artists: Array.from(rec.artists).sort(),
     }))
 
     return NextResponse.json({ years, data: dataArray })

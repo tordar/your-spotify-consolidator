@@ -80,6 +80,9 @@
 #listening-heatmap svg {
   display: block;
 }
+#listening-heatmap svg rect {
+  cursor: pointer;
+}
 
 @layer utilities {
   .custom-scrollbar::-webkit-scrollbar {

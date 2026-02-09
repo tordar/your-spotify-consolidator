@@ -88,7 +88,12 @@ interface StatsData {
 
 interface DailyListeningResponse {
   years: number[]
-  data: Array<{ date: number; value: number }>
+  data: Array<{
+    date: number
+    value: number
+    songs?: string[]
+    artists?: string[]
+  }>
 }
 
 // Helper function to get computed CSS variable value
@@ -108,9 +113,15 @@ export default function StatsPage() {
   const [dailyListening, setDailyListening] = useState<DailyListeningResponse | null>(null)
   const [selectedHeatmapYear, setSelectedHeatmapYear] = useState<number>(() => new Date().getFullYear())
   const [dailyListeningLoading, setDailyListeningLoading] = useState(false)
+  const [selectedDay, setSelectedDay] = useState<{
+    date: number
+    value: number
+    songs: string[]
+    artists: string[]
+  } | null>(null)
   const chartComponentRef = useRef<HighchartsReact.RefObject>(null)
   const hourlyChartComponentRef = useRef<HighchartsReact.RefObject>(null)
-  const heatmapRef = useRef<{ destroy: () => Promise<unknown> } | null>(null)
+  const heatmapRef = useRef<{ destroy: () => Promise<unknown>; on?: (name: string, fn: (...args: unknown[]) => void) => void } | null>(null)
   
   useEffect(() => {
     setMounted(true)
@@ -237,12 +248,19 @@ export default function StatsPage() {
               [
                 TooltipPlugin,
                 {
-                  text: (_: number, value: number, dayjsDate: { format: (f: string) => string }) => {
+                  text: (timestamp: number, value: number, dayjsDate: { format: (f: string) => string }) => {
                     const totalMinutes = Math.floor(value / 60000)
                     const hours = Math.floor(totalMinutes / 60)
                     const minutes = totalMinutes % 60
                     const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
-                    return `${dayjsDate.format('MMM D, YYYY')}: ${timeStr}`
+                    const dayRecord = dailyListening.data.find((d) => d.date === timestamp)
+                    const songCount = dayRecord?.songs?.length ?? 0
+                    const artistCount = dayRecord?.artists?.length ?? 0
+                    const parts = [`${dayjsDate.format('MMM D, YYYY')}: ${timeStr}`]
+                    if (songCount || artistCount) {
+                      parts.push(`${songCount} song${songCount !== 1 ? 's' : ''}, ${artistCount} artist${artistCount !== 1 ? 's' : ''}`)
+                    }
+                    return parts.join('<br/>')
                   },
                 },
               ],
@@ -268,10 +286,27 @@ export default function StatsPage() {
       requestAnimationFrame(() => {
         requestAnimationFrame(scaleSvgToFit)
       })
+
+      const calWithOn = cal as unknown as { on: (name: string, fn: (...args: unknown[]) => void) => void }
+      if (typeof calWithOn.on === 'function') {
+        calWithOn.on('click', (_ev: unknown, timestamp: number) => {
+        if (cancelled) return
+        const dayRecord = dailyListening.data.find((d) => d.date === timestamp)
+        if (dayRecord) {
+          setSelectedDay({
+            date: dayRecord.date,
+            value: dayRecord.value,
+            songs: dayRecord.songs ?? [],
+            artists: dayRecord.artists ?? [],
+          })
+        }
+      })
+      }
     }
     run()
     return () => {
       cancelled = true
+      setSelectedDay(null)
       heatmapRef.current?.destroy()
       heatmapRef.current = null
     }
@@ -932,6 +967,64 @@ export default function StatsPage() {
                         <p className="text-muted-foreground text-sm mb-3">No listening data for {selectedHeatmapYear}.</p>
                       )}
                       <div id="listening-heatmap" className="min-h-[200px] w-full" />
+                      {selectedDay && (
+                        <div className="mt-4 rounded-lg border bg-muted/50 p-4">
+                          <div className="flex items-center justify-between gap-2 mb-3">
+                            <h4 className="font-semibold">
+                              {new Date(selectedDay.date).toLocaleDateString(undefined, {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                              })}
+                              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                                ({formatDuration(selectedDay.value)})
+                              </span>
+                            </h4>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDay(null)}
+                              className="text-sm text-muted-foreground hover:text-foreground"
+                            >
+                              Close
+                            </button>
+                          </div>
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <div>
+                              <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                                Songs ({selectedDay.songs.length})
+                              </h5>
+                              <ul className="max-h-48 list-inside list-disc space-y-0.5 overflow-y-auto text-sm">
+                                {selectedDay.songs.length === 0 ? (
+                                  <li className="text-muted-foreground">No songs</li>
+                                ) : (
+                                  selectedDay.songs.map((s) => (
+                                    <li key={s} className="truncate" title={s}>
+                                      {s}
+                                    </li>
+                                  ))
+                                )}
+                              </ul>
+                            </div>
+                            <div>
+                              <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                                Artists ({selectedDay.artists.length})
+                              </h5>
+                              <ul className="max-h-48 list-inside list-disc space-y-0.5 overflow-y-auto text-sm">
+                                {selectedDay.artists.length === 0 ? (
+                                  <li className="text-muted-foreground">No artists</li>
+                                ) : (
+                                  selectedDay.artists.map((a) => (
+                                    <li key={a} className="truncate" title={a}>
+                                      {a}
+                                    </li>
+                                  ))
+                                )}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </>
                   )}
                 </CardContent>

@@ -12,6 +12,7 @@ interface ListeningEvent {
 interface SongRecord {
   name?: string
   artists?: string[]
+  album?: { name?: string; id?: string; images?: unknown[] }
   listeningEvents?: ListeningEvent[]
 }
 
@@ -19,10 +20,16 @@ interface MergedHistory {
   songs?: SongRecord[]
 }
 
+interface DayPlay {
+  songName: string
+  artists: string[]
+  albumName: string
+  msPlayed: number
+}
+
 interface DayRecord {
   totalMs: number
-  songs: Set<string>
-  artists: Set<string>
+  plays: DayPlay[]
 }
 
 function getMergedHistoryDir(): string {
@@ -94,6 +101,7 @@ export async function GET(request: Request) {
       const events = song.listeningEvents
       const songName = song.name?.trim() || ''
       const artistNames = Array.isArray(song.artists) ? song.artists.map((a) => String(a).trim()).filter(Boolean) : []
+      const albumName = song.album?.name?.trim() || 'Unknown Album'
       if (!events || !Array.isArray(events)) continue
       for (const event of events) {
         const playedAt = new Date(event.playedAt).getTime()
@@ -103,20 +111,23 @@ export async function GET(request: Request) {
         const key = dayStart.getTime()
         let rec = dayMap.get(key)
         if (!rec) {
-          rec = { totalMs: 0, songs: new Set(), artists: new Set() }
+          rec = { totalMs: 0, plays: [] }
           dayMap.set(key, rec)
         }
         rec.totalMs += event.msPlayed || 0
-        if (songName) rec.songs.add(songName)
-        artistNames.forEach((a) => rec!.artists.add(a))
+        rec.plays.push({
+          songName: songName || 'Unknown',
+          artists: artistNames.length ? artistNames : ['Unknown'],
+          albumName,
+          msPlayed: event.msPlayed || 0,
+        })
       }
     }
 
     const dataArray = Array.from(dayMap.entries()).map(([date, rec]) => ({
       date,
       value: rec.totalMs,
-      songs: Array.from(rec.songs).sort(),
-      artists: Array.from(rec.artists).sort(),
+      plays: rec.plays,
     }))
 
     return NextResponse.json({ years, data: dataArray })

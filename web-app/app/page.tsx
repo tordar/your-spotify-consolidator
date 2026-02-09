@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import SpotifyStatsLayout from '../components/SpotifyStatsLayout'
 import Highcharts from 'highcharts'
 import HighchartsReact from 'highcharts-react-official'
-import { Music2, Users, Play, Clock, Globe } from 'lucide-react'
+import { Music2, Users, Play, Clock, Globe, X } from 'lucide-react'
 import { StatsSkeleton } from '@/components/SkeletonLoader'
 import { getCountryName } from '@/lib/country-names'
 import 'cal-heatmap/cal-heatmap.css'
@@ -86,13 +86,19 @@ interface StatsData {
   }
 }
 
+interface DayPlay {
+  songName: string
+  artists: string[]
+  albumName: string
+  msPlayed: number
+}
+
 interface DailyListeningResponse {
   years: number[]
   data: Array<{
     date: number
     value: number
-    songs?: string[]
-    artists?: string[]
+    plays?: DayPlay[]
   }>
 }
 
@@ -116,9 +122,10 @@ export default function StatsPage() {
   const [selectedDay, setSelectedDay] = useState<{
     date: number
     value: number
-    songs: string[]
-    artists: string[]
+    plays: DayPlay[]
   } | null>(null)
+  const [expandedHeatmapArtist, setExpandedHeatmapArtist] = useState<string | null>(null)
+  const [expandedHeatmapAlbum, setExpandedHeatmapAlbum] = useState<string | null>(null) // key: `${artist}|${album}`
   const chartComponentRef = useRef<HighchartsReact.RefObject>(null)
   const hourlyChartComponentRef = useRef<HighchartsReact.RefObject>(null)
   const heatmapRef = useRef<{ destroy: () => Promise<unknown>; on?: (name: string, fn: (...args: unknown[]) => void) => void } | null>(null)
@@ -254,8 +261,9 @@ export default function StatsPage() {
                     const minutes = totalMinutes % 60
                     const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
                     const dayRecord = dailyListening.data.find((d) => d.date === timestamp)
-                    const songCount = dayRecord?.songs?.length ?? 0
-                    const artistCount = dayRecord?.artists?.length ?? 0
+                    const plays = dayRecord?.plays ?? []
+                    const songCount = new Set(plays.map((p) => p.songName)).size
+                    const artistCount = new Set(plays.flatMap((p) => p.artists)).size
                     const parts = [`${dayjsDate.format('MMM D, YYYY')}: ${timeStr}`]
                     if (songCount || artistCount) {
                       parts.push(`${songCount} song${songCount !== 1 ? 's' : ''}, ${artistCount} artist${artistCount !== 1 ? 's' : ''}`)
@@ -296,8 +304,7 @@ export default function StatsPage() {
           setSelectedDay({
             date: dayRecord.date,
             value: dayRecord.value,
-            songs: dayRecord.songs ?? [],
-            artists: dayRecord.artists ?? [],
+            plays: dayRecord.plays ?? [],
           })
         }
       })
@@ -307,6 +314,7 @@ export default function StatsPage() {
     return () => {
       cancelled = true
       setSelectedDay(null)
+      setExpandedHeatmapArtist(null)
       heatmapRef.current?.destroy()
       heatmapRef.current = null
     }
@@ -967,64 +975,137 @@ export default function StatsPage() {
                         <p className="text-muted-foreground text-sm mb-3">No listening data for {selectedHeatmapYear}.</p>
                       )}
                       <div id="listening-heatmap" className="min-h-[200px] w-full" />
-                      {selectedDay && (
-                        <div className="mt-4 rounded-lg border bg-muted/50 p-4">
-                          <div className="flex items-center justify-between gap-2 mb-3">
-                            <h4 className="font-semibold">
-                              {new Date(selectedDay.date).toLocaleDateString(undefined, {
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                              })}
-                              <span className="ml-2 text-sm font-normal text-muted-foreground">
-                                ({formatDuration(selectedDay.value)})
-                              </span>
-                            </h4>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedDay(null)}
-                              className="text-sm text-muted-foreground hover:text-foreground"
-                            >
-                              Close
-                            </button>
-                          </div>
-                          <div className="grid gap-4 sm:grid-cols-2">
+                      {selectedDay && (() => {
+                        const totalPlays = selectedDay.plays.length
+                        const byArtist = new Map<string, { playCount: number; albums: Map<string, Set<string>> }>()
+                        for (const play of selectedDay.plays) {
+                          const albumName = play.albumName ?? 'Unknown Album'
+                          for (const artist of play.artists) {
+                            let cur = byArtist.get(artist)
+                            if (!cur) {
+                              cur = { playCount: 0, albums: new Map() }
+                              byArtist.set(artist, cur)
+                            }
+                            cur.playCount += 1
+                            let albumSongs = cur.albums.get(albumName)
+                            if (!albumSongs) {
+                              albumSongs = new Set<string>()
+                              cur.albums.set(albumName, albumSongs)
+                            }
+                            albumSongs.add(play.songName)
+                          }
+                        }
+                        const artistRows = Array.from(byArtist.entries())
+                          .map(([name, { playCount, albums }]) => {
+                            const albumList = Array.from(albums.entries())
+                              .map(([albumName, songs]) => ({
+                                name: albumName,
+                                songCount: songs.size,
+                                songs: Array.from(songs).sort(),
+                              }))
+                              .sort((x, y) => y.songCount - x.songCount)
+                            const songCount = new Set(albumList.flatMap((al) => al.songs)).size
+                            return {
+                              name,
+                              playCount,
+                              songCount,
+                              albums: albumList,
+                              percentage: totalPlays > 0 ? (playCount / totalPlays) * 100 : 0,
+                            }
+                          })
+                          .sort((a, b) => b.playCount - a.playCount)
+                        return (
+                          <div className="mt-4 rounded-lg border bg-muted/50 p-4">
+                            <div className="flex items-center justify-between gap-2 mb-3">
+                              <h4 className="font-semibold">
+                                {new Date(selectedDay.date).toLocaleDateString(undefined, {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                })}
+                                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                                  ({formatDuration(selectedDay.value)})
+                                </span>
+                              </h4>
+                              <button
+                                type="button"
+                                onClick={() => { setSelectedDay(null); setExpandedHeatmapArtist(null); setExpandedHeatmapAlbum(null) }}
+                                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                aria-label="Close"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
                             <div>
                               <h5 className="mb-2 text-sm font-medium text-muted-foreground">
-                                Songs ({selectedDay.songs.length})
+                                By artist (play count)
                               </h5>
-                              <ul className="max-h-48 list-inside list-disc space-y-0.5 overflow-y-auto text-sm">
-                                {selectedDay.songs.length === 0 ? (
-                                  <li className="text-muted-foreground">No songs</li>
+                              <ul className="max-h-96 space-y-0 overflow-y-auto text-sm">
+                                {artistRows.length === 0 ? (
+                                  <li className="py-1 text-muted-foreground">No artists</li>
                                 ) : (
-                                  selectedDay.songs.map((s) => (
-                                    <li key={s} className="truncate" title={s}>
-                                      {s}
+                                  artistRows.map((a) => (
+                                    <li key={a.name} className="border-b border-border/50 last:border-b-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => setExpandedHeatmapArtist((prev) => (prev === a.name ? null : a.name))}
+                                        className="flex w-full cursor-pointer items-center justify-between gap-2 py-2 text-left hover:bg-muted/50"
+                                      >
+                                        <span className="truncate" title={a.name}>
+                                          {a.name}
+                                        </span>
+                                        <span className="shrink-0 text-muted-foreground">
+                                          {a.percentage.toFixed(1)}% ({a.playCount} plays, {a.songCount} song{a.songCount !== 1 ? 's' : ''})
+                                          <span className={`ml-1 inline-block transition-transform ${expandedHeatmapArtist === a.name ? 'rotate-180' : ''}`}>
+                                            ▾
+                                          </span>
+                                        </span>
+                                      </button>
+                                      {expandedHeatmapArtist === a.name && (
+                                        <ul className="border-t border-border/50 bg-muted/30">
+                                          {a.albums.map((alb) => {
+                                            const albumKey = `${a.name}|${alb.name}`
+                                            const albumExpanded = expandedHeatmapAlbum === albumKey
+                                            return (
+                                              <li key={albumKey} className="border-b border-border/40 last:border-b-0">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setExpandedHeatmapAlbum((prev) => (prev === albumKey ? null : albumKey))}
+                                                  className="flex w-full cursor-pointer items-center justify-between gap-2 py-1.5 pl-4 pr-2 text-left text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                                                >
+                                                  <span className="truncate" title={alb.name}>
+                                                    {alb.name}
+                                                  </span>
+                                                  <span className="shrink-0">
+                                                    {alb.songCount} song{alb.songCount !== 1 ? 's' : ''}
+                                                    <span className={`ml-1 inline-block transition-transform ${albumExpanded ? 'rotate-180' : ''}`}>
+                                                      ▾
+                                                    </span>
+                                                  </span>
+                                                </button>
+                                                {albumExpanded && (
+                                                  <ul className="list-inside list-disc space-y-0.5 bg-muted/20 px-4 py-2 pl-8 text-muted-foreground">
+                                                    {alb.songs.map((s) => (
+                                                      <li key={s} className="truncate" title={s}>
+                                                        {s}
+                                                      </li>
+                                                    ))}
+                                                  </ul>
+                                                )}
+                                              </li>
+                                            )
+                                          })}
+                                        </ul>
+                                      )}
                                     </li>
                                   ))
                                 )}
                               </ul>
                             </div>
-                            <div>
-                              <h5 className="mb-2 text-sm font-medium text-muted-foreground">
-                                Artists ({selectedDay.artists.length})
-                              </h5>
-                              <ul className="max-h-48 list-inside list-disc space-y-0.5 overflow-y-auto text-sm">
-                                {selectedDay.artists.length === 0 ? (
-                                  <li className="text-muted-foreground">No artists</li>
-                                ) : (
-                                  selectedDay.artists.map((a) => (
-                                    <li key={a} className="truncate" title={a}>
-                                      {a}
-                                    </li>
-                                  ))
-                                )}
-                              </ul>
-                            </div>
                           </div>
-                        </div>
-                      )}
+                        )
+                      })()}
                     </>
                   )}
                 </CardContent>

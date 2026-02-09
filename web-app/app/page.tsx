@@ -10,6 +10,7 @@ import HighchartsReact from 'highcharts-react-official'
 import { Music2, Users, Play, Clock, Globe } from 'lucide-react'
 import { StatsSkeleton } from '@/components/SkeletonLoader'
 import { getCountryName } from '@/lib/country-names'
+import 'cal-heatmap/cal-heatmap.css'
 
 interface YearlyListeningTime {
   year: string
@@ -85,6 +86,11 @@ interface StatsData {
   }
 }
 
+interface DailyListeningResponse {
+  years: number[]
+  data: Array<{ date: number; value: number }>
+}
+
 // Helper function to get computed CSS variable value
 const getCSSVariable = (variable: string): string => {
   if (typeof window === 'undefined') return ''
@@ -99,13 +105,17 @@ export default function StatsPage() {
   const [mounted, setMounted] = useState(false)
   const [selectedYear, setSelectedYear] = useState<string | null>(null)
   const [countriesExpanded, setCountriesExpanded] = useState(false)
+  const [dailyListening, setDailyListening] = useState<DailyListeningResponse | null>(null)
+  const [selectedHeatmapYear, setSelectedHeatmapYear] = useState<number>(() => new Date().getFullYear())
+  const [dailyListeningLoading, setDailyListeningLoading] = useState(false)
   const chartComponentRef = useRef<HighchartsReact.RefObject>(null)
   const hourlyChartComponentRef = useRef<HighchartsReact.RefObject>(null)
+  const heatmapRef = useRef<{ destroy: () => Promise<unknown> } | null>(null)
   
   useEffect(() => {
     setMounted(true)
   }, [])
-  
+
   // Set default selected year to most recent year with data
   useEffect(() => {
     if (statsData?.stats?.yearlyTopItems && statsData.stats.yearlyTopItems.length > 0 && !selectedYear) {
@@ -135,6 +145,137 @@ export default function StatsPage() {
     
     fetchStats()
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    setDailyListeningLoading(true)
+    const fetchDailyListening = async () => {
+      try {
+        const res = await fetch(`/api/data/daily-listening?year=${selectedHeatmapYear}`, { cache: 'no-cache' })
+        if (cancelled) return
+        if (!res.ok) {
+          setDailyListening(null)
+          return
+        }
+        const json: DailyListeningResponse = await res.json()
+        if (cancelled) return
+        setDailyListening(json)
+      } catch {
+        if (!cancelled) setDailyListening(null)
+      } finally {
+        if (!cancelled) setDailyListeningLoading(false)
+      }
+    }
+    fetchDailyListening()
+    return () => { cancelled = true }
+  }, [selectedHeatmapYear])
+
+  // Paint Cal-Heatmap when mounted and daily listening data is available
+  useEffect(() => {
+    if (!mounted || !dailyListening) return
+    let cancelled = false
+    const run = async () => {
+      const calHeatmapMod = await import('cal-heatmap')
+      type CalHeatmapCtor = new () => { paint: (o: unknown, p?: unknown) => Promise<unknown>; destroy: () => Promise<unknown> }
+      const CalHeatmap = ((calHeatmapMod as { default?: CalHeatmapCtor }).default ?? calHeatmapMod) as CalHeatmapCtor
+      // @ts-expect-error cal-heatmap plugin subpath may not be in types
+      const tooltipMod = await import('cal-heatmap/plugins/Tooltip').catch(() => null)
+      const TooltipPlugin = tooltipMod
+        ? (tooltipMod as { default?: unknown }).default ?? tooltipMod
+        : null
+      if (cancelled) return
+      const cal = new CalHeatmap()
+      heatmapRef.current = cal
+      const year = dailyListening.years[0] ?? new Date().getFullYear()
+      const startOfYear = new Date(Date.UTC(year, 0, 1))
+      const isCurrentYear = year === new Date().getFullYear()
+      const endOfRange = isCurrentYear
+        ? new Date()
+        : new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999))
+      const maxVal = dailyListening.data.length
+        ? Math.max(...dailyListening.data.map((d) => d.value), 1)
+        : 1
+      await cal.paint(
+        {
+          itemSelector: '#listening-heatmap',
+          range: 1,
+          domain: { type: 'year' },
+          subDomain: {
+            type: 'day',
+            width: 22,
+            height: 22,
+            gutter: 4,
+          },
+          date: {
+            start: startOfYear,
+            min: startOfYear,
+            max: endOfRange,
+            timezone: 'UTC',
+          },
+          data: {
+            source: dailyListening.data,
+            type: 'json',
+            x: 'date',
+            y: 'value',
+            groupY: 'sum',
+          },
+          scale: {
+            color: {
+              // 0 = empty; (0, maxVal] = low→high gradient (light = less, dark = more)
+              domain: [0, 1, maxVal],
+              type: 'linear',
+              range: [
+                'var(--heatmap-empty)',
+                '#86efac', // less listening
+                '#14532d', // more listening
+              ],
+            },
+          },
+        },
+        TooltipPlugin
+          ? [
+              [
+                TooltipPlugin,
+                {
+                  text: (_: number, value: number, dayjsDate: { format: (f: string) => string }) => {
+                    const totalMinutes = Math.floor(value / 60000)
+                    const hours = Math.floor(totalMinutes / 60)
+                    const minutes = totalMinutes % 60
+                    const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+                    return `${dayjsDate.format('MMM D, YYYY')}: ${timeStr}`
+                  },
+                },
+              ],
+            ]
+          : undefined
+      )
+
+      // Force SVG to fit container width so full year is visible and nothing is clipped
+      const scaleSvgToFit = () => {
+        const el = document.getElementById('listening-heatmap')
+        const svg = el?.querySelector('svg')
+        if (!el || !svg || cancelled) return
+        const containerW = el.clientWidth
+        const intrinsicW = Number(svg.getAttribute('width')) || svg.getBoundingClientRect().width || containerW
+        const intrinsicH = Number(svg.getAttribute('height')) || svg.getBoundingClientRect().height || 200
+        if (intrinsicW > 0 && containerW > 0) {
+          const newH = Math.round(intrinsicH * (containerW / intrinsicW))
+          svg.setAttribute('viewBox', `0 0 ${intrinsicW} ${intrinsicH}`)
+          svg.setAttribute('width', String(containerW))
+          svg.setAttribute('height', String(newH))
+        }
+      }
+      requestAnimationFrame(() => {
+        requestAnimationFrame(scaleSvgToFit)
+      })
+    }
+    run()
+    return () => {
+      cancelled = true
+      heatmapRef.current?.destroy()
+      heatmapRef.current = null
+    }
+  }, [mounted, dailyListening])
 
   // Prepare chart options for yearly listening hours
   const getChartOptions = (): Highcharts.Options => {
@@ -757,6 +898,44 @@ export default function StatsPage() {
                   </CardContent>
                 </Card>
               ) : null}
+
+              {/* Year-to-date listening heatmap (hidden on small screens) */}
+              <Card className="hidden md:block">
+                <CardHeader>
+                  <CardTitle className="mb-4">Listening activity</CardTitle>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Year:</span>
+                    <select
+                      value={selectedHeatmapYear}
+                      onChange={(e) => setSelectedHeatmapYear(parseInt(e.target.value, 10))}
+                      className="rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {Array.from(
+                        { length: new Date().getFullYear() - 2008 },
+                        (_, i) => new Date().getFullYear() - i
+                      ).map((y) => (
+                        <option key={y} value={y}>
+                          {y}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {!mounted || dailyListeningLoading ? (
+                    <p className="text-muted-foreground text-sm">Loading…</p>
+                  ) : dailyListening === null ? (
+                    <p className="text-muted-foreground text-sm">No daily listening data available.</p>
+                  ) : (
+                    <>
+                      {dailyListening.data.length === 0 && (
+                        <p className="text-muted-foreground text-sm mb-3">No listening data for {selectedHeatmapYear}.</p>
+                      )}
+                      <div id="listening-heatmap" className="min-h-[200px] w-full" />
+                    </>
+                  )}
+                </CardContent>
+              </Card>
 
               {/* Country Listening Data */}
               {statsData.stats?.countryListeningData && statsData.stats.countryListeningData.length > 0 ? (

@@ -1,5 +1,22 @@
 import type { SpotifyTrack, SpotifyTracksResponse, SpotifyAlbum, SpotifyAlbumsResponse, SpotifyArtist, SpotifyArtistsResponse } from './types';
 
+/** Max wait time (ms) before we skip enrichment instead of waiting. 600s = 10 minutes. */
+const SKIP_ENRICHMENT_WAIT_MS = 600 * 1000;
+
+/**
+ * Thrown when rate limited with a Retry-After longer than SKIP_ENRICHMENT_WAIT_MS.
+ * Callers should skip enrichment and continue with non-enriched data.
+ */
+export class RateLimitSkipEnrichmentError extends Error {
+  constructor(
+    message: string,
+    public readonly waitTimeSeconds: number
+  ) {
+    super(message);
+    this.name = 'RateLimitSkipEnrichmentError';
+  }
+}
+
 /**
  * Spotify API Client with rate limiting and retry logic
  */
@@ -17,14 +34,23 @@ export class SpotifyApiClient {
   private async handleRateLimit(response: Response, retryCount: number = 0, maxRetries: number = 5): Promise<number> {
     if (response.status === 429) {
       const retryAfter = response.headers.get('Retry-After');
-      const waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.min(1000 * Math.pow(2, retryCount), 60000);
-      
+      const waitTimeMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.min(1000 * Math.pow(2, retryCount), 60000);
+      const waitTimeSeconds = waitTimeMs / 1000;
+
+      if (waitTimeMs > SKIP_ENRICHMENT_WAIT_MS) {
+        console.log(`⏳ Rate limited (429). Wait time ${waitTimeSeconds}s exceeds ${SKIP_ENRICHMENT_WAIT_MS / 1000}s — skipping enrichment.`);
+        throw new RateLimitSkipEnrichmentError(
+          `Rate limited: Retry-After ${waitTimeSeconds}s exceeds skip threshold (${SKIP_ENRICHMENT_WAIT_MS / 1000}s). Skipping enrichment.`,
+          waitTimeSeconds
+        );
+      }
+
       if (retryCount >= maxRetries) {
         throw new Error(`Rate limited: Max retries (${maxRetries}) exceeded`);
       }
 
-      console.log(`⏳ Rate limited (429). Waiting ${waitTime / 1000}s before retry ${retryCount + 1}/${maxRetries}...`);
-      await this.sleep(waitTime);
+      console.log(`⏳ Rate limited (429). Waiting ${waitTimeSeconds}s before retry ${retryCount + 1}/${maxRetries}...`);
+      await this.sleep(waitTimeMs);
       return retryCount + 1;
     }
     return retryCount;

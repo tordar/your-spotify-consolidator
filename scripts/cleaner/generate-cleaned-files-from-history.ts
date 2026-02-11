@@ -1,5 +1,5 @@
 import { SpotifyTokenManager } from '../spotify-token-manager';
-import { SpotifyApiClient } from './utils/spotify-api-client';
+import { SpotifyApiClient, RateLimitSkipEnrichmentError } from './utils/spotify-api-client';
 // import { MusicBrainzApiClient } from './utils/musicbrainz-api-client';
 import { ConsolidationRulesManager, Consolidator } from './utils/consolidation';
 import { FileOperations } from './utils/file-operations';
@@ -2594,40 +2594,21 @@ class CleanedFilesGenerator {
       let allArtistsGenres: Array<{ name: string; play_count: number; genres: string[] }>;
       
       if (this.tokenManager) {
-        console.log('\n🎵 Enriching cleaned files with Spotify metadata...');
-        songsResult.songs = await this.enrichSongsWithMetadata(songsResult.songs, existingFiles.songs);
-        artistsResult.artists = await this.enrichArtistsWithMetadata(artistsResult.artists, existingFiles.artists);
-        artistsResult.artists = await this.enrichArtistTopSongsAndAlbums(artistsResult.artists, existingFiles.artists);
-        albumsWithSongsResult.albums = await this.enrichAlbumsWithSongsMetadata(albumsWithSongsResult.albums, existingFiles.albumsWithSongs);
-        
-        // Enrich all artists genres after top artists are enriched (to reuse existing data)
-        allArtistsGenres = await this.enrichAllArtistsGenres(allArtistsGenresWithSongIds, existingFiles.artists);
-        
-        // Create a map of enriched albums for lookup (from albumsWithSongs) for detailed stats enrichment
-        const enrichedAlbumsMap = new Map<string, CleanedAlbum>();
-        albumsWithSongsResult.albums.forEach(album => {
-          const nameKey = `${album.album.name.toLowerCase().trim()}|${(album.album.artists[0] || '').toLowerCase().trim()}`;
-          const cleanedAlbum: CleanedAlbum = {
-            rank: album.rank,
-            duration_ms: album.duration_ms,
-            count: album.count,
-            differents: album.differents,
-            primaryAlbumId: album.primaryAlbumId,
-            total_count: album.total_count,
-            total_duration_ms: album.total_duration_ms,
-            album: album.album,
-            consolidated_count: album.consolidated_count,
-            original_albumIds: album.original_albumIds
-          };
-          enrichedAlbumsMap.set(nameKey, cleanedAlbum);
-          if (album.primaryAlbumId) {
-            enrichedAlbumsMap.set(album.primaryAlbumId, cleanedAlbum);
-          }
-        });
-        // Also include existing albums from albumsWithSongs as fallback
-        existingFiles.albumsWithSongs.forEach((album, key) => {
-          if (!enrichedAlbumsMap.has(key)) {
-            enrichedAlbumsMap.set(key, {
+        try {
+          console.log('\n🎵 Enriching cleaned files with Spotify metadata...');
+          songsResult.songs = await this.enrichSongsWithMetadata(songsResult.songs, existingFiles.songs);
+          artistsResult.artists = await this.enrichArtistsWithMetadata(artistsResult.artists, existingFiles.artists);
+          artistsResult.artists = await this.enrichArtistTopSongsAndAlbums(artistsResult.artists, existingFiles.artists);
+          albumsWithSongsResult.albums = await this.enrichAlbumsWithSongsMetadata(albumsWithSongsResult.albums, existingFiles.albumsWithSongs);
+          
+          // Enrich all artists genres after top artists are enriched (to reuse existing data)
+          allArtistsGenres = await this.enrichAllArtistsGenres(allArtistsGenresWithSongIds, existingFiles.artists);
+          
+          // Create a map of enriched albums for lookup (from albumsWithSongs) for detailed stats enrichment
+          const enrichedAlbumsMap = new Map<string, CleanedAlbum>();
+          albumsWithSongsResult.albums.forEach(album => {
+            const nameKey = `${album.album.name.toLowerCase().trim()}|${(album.album.artists[0] || '').toLowerCase().trim()}`;
+            const cleanedAlbum: CleanedAlbum = {
               rank: album.rank,
               duration_ms: album.duration_ms,
               count: album.count,
@@ -2638,45 +2619,73 @@ class CleanedFilesGenerator {
               album: album.album,
               consolidated_count: album.consolidated_count,
               original_albumIds: album.original_albumIds
-            });
+            };
+            enrichedAlbumsMap.set(nameKey, cleanedAlbum);
+            if (album.primaryAlbumId) {
+              enrichedAlbumsMap.set(album.primaryAlbumId, cleanedAlbum);
+            }
+          });
+          // Also include existing albums from albumsWithSongs as fallback
+          existingFiles.albumsWithSongs.forEach((album, key) => {
+            if (!enrichedAlbumsMap.has(key)) {
+              enrichedAlbumsMap.set(key, {
+                rank: album.rank,
+                duration_ms: album.duration_ms,
+                count: album.count,
+                differents: album.differents,
+                primaryAlbumId: album.primaryAlbumId,
+                total_count: album.total_count,
+                total_duration_ms: album.total_duration_ms,
+                album: album.album,
+                consolidated_count: album.consolidated_count,
+                original_albumIds: album.original_albumIds
+              });
+            }
+          });
+          
+          // Enrich detailed stats with actual artist and song images
+          // Use the newly enriched songs/artists, not just the existing files
+          
+          // Create a map of enriched artists for lookup
+          const enrichedArtistsMap = new Map<string, CleanedArtist>();
+          artistsResult.artists.forEach(artist => {
+            const nameKey = artist.artist.name.toLowerCase().trim();
+            enrichedArtistsMap.set(nameKey, artist);
+            if (artist.primaryArtistId) {
+              enrichedArtistsMap.set(artist.primaryArtistId, artist);
+            }
+          });
+          // Also include existing artists as fallback
+          existingFiles.artists.forEach((artist, key) => {
+            if (!enrichedArtistsMap.has(key)) {
+              enrichedArtistsMap.set(key, artist);
+            }
+          });
+          
+          let enrichedStats = await this.enrichDetailedStatsWithArtistImages(detailedStats, enrichedArtistsMap, history);
+          
+          // Create a map of enriched songs for lookup
+          const enrichedSongsMap = new Map<string, CleanedSong>();
+          songsResult.songs.forEach(song => {
+            enrichedSongsMap.set(song.songId, song);
+          });
+          // Also include existing songs as fallback
+          existingFiles.songs.forEach((song, songId) => {
+            if (!enrichedSongsMap.has(songId)) {
+              enrichedSongsMap.set(songId, song);
+            }
+          });
+          
+          enrichedStats = await this.enrichDetailedStatsWithSongImages(enrichedStats, enrichedSongsMap, enrichedAlbumsMap);
+          detailedStats = enrichedStats;
+        } catch (err) {
+          if (err instanceof RateLimitSkipEnrichmentError) {
+            console.log(`\n⚠️  Skipping enrichment: rate limited with ${err.waitTimeSeconds}s wait time (threshold: 600s). Continuing with non-enriched data.`);
+            allArtistsGenres = allArtistsGenresWithSongIds.map(({ songId, ...rest }) => rest);
+          } else {
+            throw err;
           }
-        });
-        
-        // Enrich detailed stats with actual artist and song images
-        // Use the newly enriched songs/artists, not just the existing files
-        
-        // Create a map of enriched artists for lookup
-        const enrichedArtistsMap = new Map<string, CleanedArtist>();
-        artistsResult.artists.forEach(artist => {
-          const nameKey = artist.artist.name.toLowerCase().trim();
-          enrichedArtistsMap.set(nameKey, artist);
-          if (artist.primaryArtistId) {
-            enrichedArtistsMap.set(artist.primaryArtistId, artist);
-          }
-        });
-        // Also include existing artists as fallback
-        existingFiles.artists.forEach((artist, key) => {
-          if (!enrichedArtistsMap.has(key)) {
-            enrichedArtistsMap.set(key, artist);
-          }
-        });
-        
-        let enrichedStats = await this.enrichDetailedStatsWithArtistImages(detailedStats, enrichedArtistsMap, history);
-        
-        // Create a map of enriched songs for lookup
-        const enrichedSongsMap = new Map<string, CleanedSong>();
-        songsResult.songs.forEach(song => {
-          enrichedSongsMap.set(song.songId, song);
-        });
-        // Also include existing songs as fallback
-        existingFiles.songs.forEach((song, songId) => {
-          if (!enrichedSongsMap.has(songId)) {
-            enrichedSongsMap.set(songId, song);
-          }
-        });
-        
-        enrichedStats = await this.enrichDetailedStatsWithSongImages(enrichedStats, enrichedSongsMap, enrichedAlbumsMap);
-        detailedStats = enrichedStats;
+        }
       } else {
         // If no token manager, just remove songId
         allArtistsGenres = allArtistsGenresWithSongIds.map(({ songId, ...rest }) => rest);

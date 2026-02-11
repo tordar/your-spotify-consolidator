@@ -38,7 +38,6 @@ export class SpotifyApiClient {
       const waitTimeSeconds = waitTimeMs / 1000;
 
       if (waitTimeMs > SKIP_ENRICHMENT_WAIT_MS) {
-        console.log(`⏳ Rate limited (429). Wait time ${waitTimeSeconds}s exceeds ${SKIP_ENRICHMENT_WAIT_MS / 1000}s — skipping enrichment.`);
         throw new RateLimitSkipEnrichmentError(
           `Rate limited: Retry-After ${waitTimeSeconds}s exceeds skip threshold (${SKIP_ENRICHMENT_WAIT_MS / 1000}s). Skipping enrichment.`,
           waitTimeSeconds
@@ -110,6 +109,7 @@ export class SpotifyApiClient {
           await this.sleep(100);
         }
       } catch (error) {
+        if (error instanceof RateLimitSkipEnrichmentError) throw error;
         console.error(`❌ Error fetching tracks batch ${i / batchSize + 1}:`, error);
       }
     }
@@ -156,6 +156,7 @@ export class SpotifyApiClient {
           await this.sleep(100);
         }
       } catch (error) {
+        if (error instanceof RateLimitSkipEnrichmentError) throw error;
         console.error(`❌ Error fetching albums batch ${i / batchSize + 1}:`, error);
       }
     }
@@ -185,6 +186,7 @@ export class SpotifyApiClient {
       const data = await response.json() as { albums: { items: SpotifyAlbum[] } };
       return data.albums?.items?.[0] || null;
     } catch (error) {
+      if (error instanceof RateLimitSkipEnrichmentError) throw error;
       return null;
     }
   }
@@ -228,6 +230,7 @@ export class SpotifyApiClient {
           await this.sleep(100);
         }
       } catch (error) {
+        if (error instanceof RateLimitSkipEnrichmentError) throw error;
         console.error(`❌ Error fetching artists batch ${i / batchSize + 1}:`, error);
       }
     }

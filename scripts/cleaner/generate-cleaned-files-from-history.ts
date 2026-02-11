@@ -1559,13 +1559,14 @@ class CleanedFilesGenerator {
       return album;
     });
 
-    return await this.enrichAndConsolidateAlbumSongs(albumsWithEnrichedMetadata);
+    return await this.enrichAndConsolidateAlbumSongs(albumsWithEnrichedMetadata, existingAlbums);
   }
 
   /**
-   * Enrich songs within albums with track numbers and consolidate duplicates
+   * Enrich songs within albums with track numbers and consolidate duplicates.
+   * Reuses track_number/disc_number (and related fields) from existing album songs to avoid re-fetching.
    */
-  private async enrichAndConsolidateAlbumSongs(albums: AlbumWithSongs[]): Promise<AlbumWithSongs[]> {
+  private async enrichAndConsolidateAlbumSongs(albums: AlbumWithSongs[], existingAlbums?: Map<string, AlbumWithSongs>): Promise<AlbumWithSongs[]> {
     if (!this.tokenManager) {
       return albums.map(album => ({
         ...album,
@@ -1574,7 +1575,30 @@ class CleanedFilesGenerator {
     }
 
     console.log('\n📥 Fetching track metadata for album songs...');
-    
+
+    // Build a cache of track metadata from existing albums so we don't re-fetch
+    const trackMap = new Map<string, SpotifyTrack>();
+    if (existingAlbums && existingAlbums.size > 0) {
+      existingAlbums.forEach(album => {
+        album.songs.forEach(song => {
+          if (song.songId && typeof song.track_number === 'number' && typeof song.disc_number === 'number') {
+            // Reuse as minimal SpotifyTrack-like shape for enrichment
+            trackMap.set(song.songId, {
+              id: song.songId,
+              name: song.name,
+              track_number: song.track_number,
+              disc_number: song.disc_number,
+              explicit: song.explicit,
+              preview_url: song.preview_url,
+              external_urls: song.external_urls as { spotify: string },
+              artists: [],
+              album: { id: '', name: '', album_type: '', images: [], release_date: '', release_date_precision: '', artists: [], external_urls: { spotify: '' } }
+            });
+          }
+        });
+      });
+    }
+
     const allSongIds = new Set<string>();
     albums.forEach(album => {
       album.songs.forEach(song => {
@@ -1584,24 +1608,29 @@ class CleanedFilesGenerator {
       });
     });
 
-    const accessToken = await this.tokenManager.getValidAccessToken();
     const uniqueSongIds = Array.from(allSongIds);
-    
-    console.log(`   Fetching ${uniqueSongIds.length} unique tracks for track numbers...`);
-    
-    const trackMap = new Map<string, SpotifyTrack>();
-    const batchSize = 50;
-    for (let i = 0; i < uniqueSongIds.length; i += batchSize) {
-      const batch = uniqueSongIds.slice(i, i + batchSize);
-      const tracks = await this.spotifyApiClient.fetchTracks(accessToken, batch);
-      tracks.forEach(track => trackMap.set(track.id, track));
-      
-      if (i + batchSize < uniqueSongIds.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+    const songIdsToFetch = uniqueSongIds.filter(id => !trackMap.has(id));
+    const alreadyHad = uniqueSongIds.length - songIdsToFetch.length;
+
+    if (songIdsToFetch.length === 0) {
+      console.log(`✅ All ${uniqueSongIds.length} album songs already have track metadata from existing file, skipping API calls`);
+    } else {
+      console.log(`   Fetching ${songIdsToFetch.length} unique tracks for track numbers (${alreadyHad} already have metadata from existing file)...`);
+    }
+
+    if (songIdsToFetch.length > 0) {
+      const accessToken = await this.tokenManager.getValidAccessToken();
+      const batchSize = 50;
+      for (let i = 0; i < songIdsToFetch.length; i += batchSize) {
+        const batch = songIdsToFetch.slice(i, i + batchSize);
+        const tracks = await this.spotifyApiClient.fetchTracks(accessToken, batch);
+        tracks.forEach(track => trackMap.set(track.id, track));
+        if (i + batchSize < songIdsToFetch.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
     }
-    
-    console.log(`✅ Fetched ${trackMap.size} tracks`);
+    console.log(`✅ Fetched ${trackMap.size} tracks total`);
 
     return albums.map(album => {
       const consolidatedSongs = this.consolidator.consolidateSongsInAlbum(album.songs);
@@ -2680,7 +2709,7 @@ class CleanedFilesGenerator {
           detailedStats = enrichedStats;
         } catch (err) {
           if (err instanceof RateLimitSkipEnrichmentError) {
-            console.log(`\n⚠️  Skipping enrichment: rate limited with ${err.waitTimeSeconds}s wait time (threshold: 600s). Continuing with non-enriched data.`);
+            console.log(`\n⚠️  Spotify rate limited (429). Retry-After ${err.waitTimeSeconds}s exceeds 600s — skipping enrichment and continuing with non-enriched data.\n`);
             allArtistsGenres = allArtistsGenresWithSongIds.map(({ songId, ...rest }) => rest);
           } else {
             throw err;

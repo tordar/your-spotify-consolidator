@@ -11,11 +11,14 @@ import type {
 } from './streaming-history-types'
 import { ConsolidationRulesManager, Consolidator } from './consolidation'
 
-const TOP_ALBUMS_LIMIT = 1000
+const TOP_ALBUMS_LIMIT = 5000
 
 export function aggregateToAlbumsWithSongs(
-  history: CompleteListeningHistoryLike
+  history: CompleteListeningHistoryLike,
+  options?: { limit?: number }
 ): { albums: AlbumWithSongs[]; originalCount: number; consolidatedCount: number } {
+  const limit = options?.limit ?? TOP_ALBUMS_LIMIT
+  const effectiveLimit = limit === Infinity || limit > 0 ? limit : TOP_ALBUMS_LIMIT
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
   const cutoffTimestamp = thirtyDaysAgo.getTime()
@@ -178,7 +181,7 @@ export function aggregateToAlbumsWithSongs(
   const albums30DaysAgo = consolidatedAlbums
     .map((a) => ({ ...a, count: a.count_30_days_ago ?? 0 }))
     .sort((a, b) => b.count - a.count)
-    .slice(0, TOP_ALBUMS_LIMIT)
+    .slice(0, effectiveLimit === Infinity ? undefined : effectiveLimit)
   const rankMap30DaysAgo = new Map<string, number>()
   albums30DaysAgo.forEach((a, i) => {
     const key = `${a.album.name.toLowerCase().trim()}|${(a.album.artists[0] ?? '').toLowerCase().trim()}`
@@ -186,7 +189,8 @@ export function aggregateToAlbumsWithSongs(
     if (a.primaryAlbumId) rankMap30DaysAgo.set(a.primaryAlbumId, i + 1)
   })
 
-  const rankedAlbums = consolidatedAlbums.slice(0, TOP_ALBUMS_LIMIT).map((album, index) => {
+  const sliceEnd = effectiveLimit === Infinity ? undefined : effectiveLimit
+  const rankedAlbums = consolidatedAlbums.slice(0, sliceEnd).map((album, index) => {
     const key = `${album.album.name.toLowerCase().trim()}|${(album.album.artists[0] ?? '').toLowerCase().trim()}`
     const rank_30_days_ago = rankMap30DaysAgo.get(key) ?? rankMap30DaysAgo.get(album.primaryAlbumId)
     return {

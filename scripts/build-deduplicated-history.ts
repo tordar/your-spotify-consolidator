@@ -22,6 +22,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { ConsolidationRulesManager, Consolidator } from './cleaner/utils/consolidation';
+import { buildMasterAlbumList } from './cleaner/utils/build-master-album-list';
 import { SpotifyTokenManager } from './spotify-token-manager';
 import { SpotifyApiClient } from './cleaner/utils/spotify-api-client';
 
@@ -858,12 +859,15 @@ async function main(): Promise<void> {
     console.log(`📁 Loading ${path.basename(latestFile)} and appending ${recentPlays.length} recent plays...`);
     let existing = builder.loadExistingDeduplicated(latestFile);
     const merged = builder.appendRecentPlays(existing, recentPlays);
+    let savedPath: string;
     if (doEnrich) {
       const enriched = await builder.enrichFromSpotify(merged);
-      builder.save(enriched);
+      savedPath = builder.save(enriched);
     } else {
-      builder.save(merged);
+      savedPath = builder.save(merged);
     }
+    const cleanedDataDir = path.join(process.cwd(), 'data', 'cleaned-data');
+    await buildMasterAlbumList(savedPath, cleanedDataDir);
     return;
   }
 
@@ -885,16 +889,18 @@ async function main(): Promise<void> {
     data = await builder.enrichFromSpotify(data);
   }
 
-  const savedPath = builder.save(data);
+  let finalDedupPath = builder.save(data);
 
   const recentPlays = builder.loadRecentPlays();
   if (recentPlays && recentPlays.length > 0) {
     console.log(`📎 Appending ${recentPlays.length} recent plays...`);
     const merged = builder.appendRecentPlays(data, recentPlays);
-    builder.save(merged);
+    finalDedupPath = builder.save(merged);
   }
 
-  console.log('🎉 Done. Output: ' + savedPath);
+  const cleanedDataDir = path.join(process.cwd(), 'data', 'cleaned-data');
+  const masterListPath = await buildMasterAlbumList(finalDedupPath, cleanedDataDir);
+  console.log('🎉 Done. Dedup output: ' + finalDedupPath + ' | Master album list: ' + masterListPath);
 }
 
 main().catch(err => {

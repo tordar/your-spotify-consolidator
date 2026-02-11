@@ -829,6 +829,22 @@ export default function StatsPage() {
                         </option>
                       ))}
                     </select>
+                    {!dailyListeningLoading && dailyListening?.data != null && dailyListening.data.length > 0 && (() => {
+                      const totalMs = dailyListening.data
+                        .filter((d) => new Date(d.date).getUTCFullYear() === selectedHeatmapYear)
+                        .reduce((sum, d) => sum + d.value, 0)
+                      const now = new Date()
+                      const isCurrentYear = selectedHeatmapYear === now.getUTCFullYear()
+                      const divisor = isCurrentYear
+                        ? Math.max(1, Math.floor((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - Date.UTC(selectedHeatmapYear, 0, 1)) / (1000 * 60 * 60 * 24)) + 1)
+                        : (selectedHeatmapYear % 4 === 0 && selectedHeatmapYear % 100 !== 0) || selectedHeatmapYear % 400 === 0 ? 366 : 365
+                      const avgMs = totalMs / divisor
+                      return (
+                        <span className="text-sm text-muted-foreground">
+                          Avg daily: {formatDuration(avgMs)}
+                        </span>
+                      )
+                    })()}
                   </div>
                 </CardHeader>
                 <CardContent>

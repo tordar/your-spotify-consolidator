@@ -4,12 +4,7 @@ import { ReactNode, useEffect, useState, useRef } from 'react'
 import { Menu } from 'lucide-react'
 import SpotifyStatsNav from './SpotifyStatsNav'
 import { Button } from './ui/button'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from './ui/sheet'
+import { Sheet, SheetContent } from './ui/sheet'
 
 type SpotifyStatsPage = 'albums' | 'songs' | 'artists' | 'stats' | 'genres' | 'settings'
 
@@ -52,6 +47,7 @@ export default function SpotifyStatsLayout({
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent 
           side="right" 
+          title={title}
           className="w-full max-w-none h-full min-h-screen md:hidden flex flex-col"
           onClick={(e) => {
             // Close menu when clicking on navigation links or view toggle buttons
@@ -88,11 +84,8 @@ export default function SpotifyStatsLayout({
             }
           }}
         >
-          <SheetHeader className="flex-shrink-0">
-            <SheetTitle>{title}</SheetTitle>
-          </SheetHeader>
           {/* Takes remaining height; only scrolls when content overflows */}
-          <div className="mt-6 flex-1 min-h-0 flex flex-col min-w-0 overflow-x-hidden overflow-y-auto w-full">
+          <div className="flex-1 min-h-0 flex flex-col min-w-0 overflow-x-hidden overflow-y-auto w-full pt-6">
             {/* Navigation + Search - centered in viewport */}
             <div className="flex items-center justify-center min-w-0 w-full flex-shrink-0">
               <SpotifyStatsNav currentPage={currentPage} largeLinks />
@@ -108,28 +101,19 @@ export default function SpotifyStatsLayout({
         </SheetContent>
       </Sheet>
 
-      {/* Sticky Navbar */}
+      {/* Sticky Navbar - always visible on mobile (hamburger); on desktop only after scroll */}
       <div
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-out ${
           showSticky
             ? 'translate-y-0 opacity-100'
-            : '-translate-y-full opacity-0 pointer-events-none'
+            : 'translate-y-0 opacity-100 md:-translate-y-full md:opacity-0 md:pointer-events-none'
         }`}
       >
         <div className="bg-card/95 backdrop-blur-md border-b border-white/10 shadow-lg">
           <div className="max-w-7xl mx-auto px-3 sm:px-4">
             <div className="flex items-center justify-between gap-2 sm:gap-4 py-3 sm:py-4">
-              {/* Mobile Menu Button - Only on mobile, hidden when menu is open */}
-              {!mobileMenuOpen && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setMobileMenuOpen(true)}
-                  className="mobile-menu-button md:hidden h-11 w-11 p-0 flex-shrink-0"
-                >
-                  <Menu className="w-6 h-6" />
-                </Button>
-              )}
+              {/* Spacer – pushes hamburger to the right on mobile */}
+              <div className="flex-1 min-w-0 md:flex-none" />
 
               {/* Condensed Title - Hidden on very small screens, shown on md+ */}
               <div className="flex-shrink-0 min-w-0 hidden md:block">
@@ -147,21 +131,33 @@ export default function SpotifyStatsLayout({
                   {additionalControls}
                 </div>
               )}
+
+              {/* Mobile Menu Button - Right side on mobile, hidden when menu is open */}
+              {!mobileMenuOpen && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="mobile-menu-button md:hidden h-11 w-11 p-0 flex-shrink-0"
+                >
+                  <Menu className="w-6 h-6" />
+                </Button>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Header */}
+      <div className="max-w-7xl mx-auto px-4 pt-14 md:pt-0">
+        {/* Header – title and description below hamburger bar on mobile */}
         <div ref={headerRef} className="text-center mb-4">
           <h1 className="text-4xl font-bold mb-2">{title}</h1>
           <p className="text-muted-foreground mb-6">
             {description}
           </p>
           
-          {/* Controls */}
-          <div className="space-y-4">
+          {/* Controls – hidden on mobile (nav/controls are in the sheet) */}
+          <div className="space-y-4 hidden md:block">
             {/* Navigation */}
             <div className="flex justify-center items-center">
               <SpotifyStatsNav currentPage={currentPage} />

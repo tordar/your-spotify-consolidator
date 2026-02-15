@@ -88,18 +88,19 @@ export default function SpotifyStatsLayout({
             }
           }}
         >
-          <SheetHeader>
+          <SheetHeader className="flex-shrink-0">
             <SheetTitle>{title}</SheetTitle>
           </SheetHeader>
-          <div className="mt-6 space-y-6 flex-1 flex flex-col min-w-0 overflow-x-hidden">
-            {/* Navigation - Full Width */}
-            <div className="flex-1 flex items-center justify-center min-w-0">
+          {/* Takes remaining height; only scrolls when content overflows */}
+          <div className="mt-6 flex-1 min-h-0 flex flex-col min-w-0 overflow-x-hidden overflow-y-auto w-full">
+            {/* Navigation + Search - centered in viewport */}
+            <div className="flex items-center justify-center min-w-0 w-full flex-shrink-0">
               <SpotifyStatsNav currentPage={currentPage} largeLinks />
             </div>
 
-            {/* Additional Controls - single row, kept together */}
+            {/* Toggle and filter right under the search, centered in viewport */}
             {additionalControls && (
-              <div className="flex flex-row flex-wrap items-center justify-center gap-2 min-w-0">
+              <div className="flex flex-row flex-wrap items-center justify-center gap-2 min-w-0 w-full scale-110 origin-center mt-4 flex-shrink-0">
                 {additionalControls}
               </div>
             )}

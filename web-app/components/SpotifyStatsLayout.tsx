@@ -52,7 +52,7 @@ export default function SpotifyStatsLayout({
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent 
           side="right" 
-          className="w-80 max-w-[85vw] md:hidden"
+          className="w-full max-w-none h-full min-h-screen md:hidden flex flex-col"
           onClick={(e) => {
             // Close menu when clicking on navigation links or view toggle buttons
             const target = e.target as HTMLElement
@@ -91,15 +91,15 @@ export default function SpotifyStatsLayout({
           <SheetHeader>
             <SheetTitle>{title}</SheetTitle>
           </SheetHeader>
-          <div className="mt-6 space-y-6">
+          <div className="mt-6 space-y-6 flex-1 flex flex-col min-w-0 overflow-x-hidden">
             {/* Navigation - Full Width */}
-            <div>
-              <SpotifyStatsNav currentPage={currentPage} />
+            <div className="flex-1 flex items-center justify-center min-w-0">
+              <SpotifyStatsNav currentPage={currentPage} largeLinks />
             </div>
 
-            {/* Additional Controls */}
+            {/* Additional Controls - single row, kept together */}
             {additionalControls && (
-              <div className="space-y-4">
+              <div className="flex flex-row flex-wrap items-center justify-center gap-2 min-w-0">
                 {additionalControls}
               </div>
             )}
@@ -116,23 +116,23 @@ export default function SpotifyStatsLayout({
         }`}
       >
         <div className="bg-card/95 backdrop-blur-md border-b border-white/10 shadow-lg">
-          <div className="max-w-7xl mx-auto px-2 sm:px-4">
-            <div className="flex items-center justify-between gap-2 sm:gap-4 py-2 sm:py-3">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4">
+            <div className="flex items-center justify-between gap-2 sm:gap-4 py-3 sm:py-4">
               {/* Mobile Menu Button - Only on mobile, hidden when menu is open */}
               {!mobileMenuOpen && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setMobileMenuOpen(true)}
-                  className="mobile-menu-button md:hidden h-8 w-8 p-0 flex-shrink-0"
+                  className="mobile-menu-button md:hidden h-11 w-11 p-0 flex-shrink-0"
                 >
-                  <Menu className="w-5 h-5" />
+                  <Menu className="w-6 h-6" />
                 </Button>
               )}
 
               {/* Condensed Title - Hidden on very small screens, shown on md+ */}
               <div className="flex-shrink-0 min-w-0 hidden md:block">
-                <h2 className="text-base sm:text-lg font-bold truncate max-w-[150px] sm:max-w-none">{title}</h2>
+                <h2 className="text-lg sm:text-xl font-bold truncate max-w-[150px] sm:max-w-none">{title}</h2>
               </div>
 
               {/* Navigation - Compact Mode - Hidden on mobile, shown on desktop */}

@@ -3,7 +3,23 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import SpotifyStatsLayout from '@/components/SpotifyStatsLayout'
-import { Clock, CheckCircle2, XCircle, Loader2, ExternalLink } from 'lucide-react'
+import { Clock, CheckCircle2, XCircle, Loader2, ExternalLink, Music2 } from 'lucide-react'
+
+interface RecentPlayItem {
+  track: {
+    id: string
+    name: string
+    duration_ms: number
+    artists: Array<{ id: string; name: string }>
+    album: {
+      id: string
+      name: string
+      images: Array<{ url: string; height: number | null; width: number | null }>
+    }
+    external_urls?: { spotify: string }
+  }
+  played_at: string
+}
 
 interface SyncStatus {
   timestamp: string | null
@@ -39,8 +55,35 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const [recentTracks, setRecentTracks] = useState<RecentPlayItem[]>([])
+  const [recentTracksLoading, setRecentTracksLoading] = useState(true)
+  const [recentTracksError, setRecentTracksError] = useState<string | null>(null)
+
   useEffect(() => {
     fetchSyncStatus()
+  }, [])
+
+  useEffect(() => {
+    const fetchRecentTracks = async () => {
+      setRecentTracksLoading(true)
+      setRecentTracksError(null)
+      try {
+        const res = await fetch('/api/spotify/recently-played?limit=50', { cache: 'no-store' })
+        const data = await res.json()
+        if (!res.ok) {
+          setRecentTracksError(data.error || 'Failed to load recently played')
+          setRecentTracks([])
+          return
+        }
+        setRecentTracks(data.items || [])
+      } catch {
+        setRecentTracksError('Failed to load recently played')
+        setRecentTracks([])
+      } finally {
+        setRecentTracksLoading(false)
+      }
+    }
+    fetchRecentTracks()
   }, [])
 
   const handleToggle = () => {
@@ -159,6 +202,74 @@ export default function SettingsPage() {
               <div className="text-sm text-muted-foreground">
                 No sync information available
               </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Music2 className="w-4 h-4" />
+              Recently played tracks
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Last 50 played tracks from your Spotify account.
+            </p>
+          </CardHeader>
+          <CardContent>
+            {recentTracksLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Loading recently played...</span>
+              </div>
+            ) : recentTracksError ? (
+              <p className="text-sm text-muted-foreground">{recentTracksError}</p>
+            ) : recentTracks.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No recently played tracks to show.</p>
+            ) : (
+              <ul className="space-y-3 max-h-[400px] overflow-y-auto">
+                {recentTracks.map((item) => {
+                  const track = item.track
+                  const artists = track.artists?.map((a) => a.name).join(', ') || ''
+                  const img = track.album?.images?.[0]?.url
+                  const playedAt = new Date(item.played_at).toLocaleString(undefined, {
+                    dateStyle: 'short',
+                    timeStyle: 'short',
+                  })
+                  return (
+                    <li key={`${item.played_at}-${track.id}`} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0">
+                      {img && (
+                        <img
+                          src={img}
+                          alt=""
+                          className="w-10 h-10 rounded object-cover flex-shrink-0"
+                          width={40}
+                          height={40}
+                        />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{track.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {artists}
+                          {track.album?.name ? ` · ${track.album.name}` : ''}
+                        </p>
+                        <p className="text-xs text-muted-foreground/80 mt-0.5">{playedAt}</p>
+                      </div>
+                      {track.external_urls?.spotify && (
+                        <a
+                          href={track.external_urls.spotify}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-shrink-0 text-muted-foreground hover:text-foreground"
+                          aria-label="Open in Spotify"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
             )}
           </CardContent>
         </Card>

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { readdir, readFile } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
+import { getRecentlyPlayed } from '@/lib/spotify-recently-played'
 
 interface ListeningEvent {
   playedAt: string
@@ -18,6 +19,9 @@ interface SongRecord {
 
 interface MergedHistory {
   songs?: SongRecord[]
+  metadata?: {
+    dateRange?: { latest?: string }
+  }
 }
 
 interface DayPlay {
@@ -122,6 +126,38 @@ export async function GET(request: Request) {
           msPlayed: event.msPlayed || 0,
         })
       }
+    }
+
+    const lastSyncAt = data.metadata?.dateRange?.latest
+      ? new Date(data.metadata.dateRange.latest).getTime()
+      : null
+    const recentPlays = (await getRecentlyPlayed(50)) ?? []
+    const playsToAppend =
+      lastSyncAt != null
+        ? recentPlays.filter((item) => new Date(item.played_at).getTime() > lastSyncAt)
+        : recentPlays
+
+    for (const item of playsToAppend) {
+      const playedAt = new Date(item.played_at).getTime()
+      if (playedAt < startTs || playedAt > endTs) continue
+      const dayStart = new Date(playedAt)
+      dayStart.setUTCHours(0, 0, 0, 0)
+      const key = dayStart.getTime()
+      let rec = dayMap.get(key)
+      if (!rec) {
+        rec = { totalMs: 0, plays: [] }
+        dayMap.set(key, rec)
+      }
+      const msPlayed = item.track.duration_ms ?? 0
+      const artists = item.track.artists?.map((a: { name: string }) => a.name).filter(Boolean) ?? []
+      rec.totalMs += msPlayed
+      rec.plays.push({
+        songName: item.track.name || 'Unknown',
+        artists: artists.length ? artists : ['Unknown'],
+        albumName: item.track.album?.name?.trim() || 'Unknown Album',
+        msPlayed,
+      })
+      console.log('[daily-listening] Appended:', item.track.name, '—', artists.join(', '))
     }
 
     const dataArray = Array.from(dayMap.entries()).map(([date, rec]) => ({

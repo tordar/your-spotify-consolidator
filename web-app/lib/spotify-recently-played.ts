@@ -3,6 +3,8 @@
  * Used by the recently-played API route and by data routes that merge recent plays.
  */
 
+import { getSpotifyAccessToken } from './spotify-auth'
+
 const CACHE_TTL_MS = 90 * 1000 // 90 seconds
 
 let cache: { items: PlayHistoryItem[]; fetchedAt: number } | null = null
@@ -49,36 +51,6 @@ interface RecentlyPlayedResponse {
   href: string
 }
 
-async function getAccessToken(): Promise<string> {
-  const clientId = process.env.SPOTIFY_CLIENT_ID
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET
-  const refreshToken = process.env.SPOTIFY_REFRESH_TOKEN
-
-  if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error('Spotify credentials not configured')
-  }
-
-  const response = await fetch('https://accounts.spotify.com/api/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
-    },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-    }),
-  })
-
-  if (!response.ok) {
-    const text = await response.text()
-    throw new Error(`Token refresh failed: ${response.status} ${text}`)
-  }
-
-  const data = await response.json()
-  return data.access_token
-}
-
 /**
  * Fetch recently played tracks from Spotify. Result is cached for 90 seconds.
  * Returns null if credentials are missing or the request fails (caller should fall back to base data).
@@ -90,7 +62,7 @@ export async function getRecentlyPlayed(limit: number = 50): Promise<PlayHistory
   }
 
   try {
-    const accessToken = await getAccessToken()
+    const accessToken = await getSpotifyAccessToken()
     const url = `https://api.spotify.com/v1/me/player/recently-played?limit=${Math.min(50, limit)}`
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${accessToken}` },

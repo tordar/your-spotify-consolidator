@@ -28,6 +28,7 @@ class SpotifyAuthSetup {
   private generateAuthUrl(clientId: string, redirectUri: string): string {
     const scopes = [
       'user-read-recently-played',
+      'user-read-playback-state',
       'user-read-private',
       'user-read-email'
     ].join(' ');
@@ -135,7 +136,9 @@ SPOTIFY_REDIRECT_URI=${redirectUri}
 `;
 
       fs.writeFileSync('.env.local', envContent);
-      console.log('💾 Tokens saved to .env.local for testing');
+      console.log('💾 Tokens saved to .env.local (project root)');
+      console.log('');
+      console.log('If you use the web app: copy SPOTIFY_REFRESH_TOKEN into web-app/.env or web-app/.env.local');
 
     } catch (error) {
       console.error('❌ Setup failed:', error);

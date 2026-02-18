@@ -1,251 +1,283 @@
 # Your Spotify Consolidator 🧹🔄📊
 
-A tool to process, consolidate, and visualize your complete Spotify listening history. Transform your raw Spotify Extended Streaming History data into beautiful statistics and insights through a modern web interface.
+A tool to process, consolidate, and visualize your complete Spotify listening history. Transform your raw Spotify Extended Streaming History (and optional recent plays) into statistics and insights through a modern web interface.
 
 ## Features
 
-- 📊 **Complete History Processing**: Process your entire Spotify listening history from exported data
-- 🧹 **Smart Consolidation**: Automatically consolidates duplicate songs, albums, and artists
-- 📈 **Beautiful Statistics**: View yearly listening trends, top songs, albums, and artists
-- 🌐 **Web Dashboard**: Modern Next.js web app deployed on Vercel
-- 🔄 **Automatic Syncing**: GitHub Actions automatically fetches recent plays every 2 hours to keep your data up to date
-- 🎵 **Rich Metadata**: Enriches data with album art, artist images, and track information via Spotify API
+- **Complete history processing** – Process your entire Spotify listening history from exported data
+- **Smart consolidation** – Automatically consolidates duplicate songs, albums, and artists
+- **Statistics dashboard** – Yearly listening trends (music + podcast), hourly distribution, total listening time, country breakdown
+- **Daily listening heatmap** – Calendar heatmap of listening by day with drill-down into top artists/albums per day
+- **Top Songs, Albums, Artists** – Browse with search and filtering; grid/list views
+- **Albums with details** – Explore albums with track-by-track breakdowns
+- **Genres** – Network graph of genre co-occurrence and top artists per genre
+- **Now Playing (Mini Player)** – Live playback state from your Spotify account (when authorized)
+- **Settings** – Recently played preview, sync status (last GitHub Actions run), and manual “Trigger sync” to run the sync workflow
+- **Rich metadata** – Album art, artist images, and genres via Spotify API (with MusicBrainz fallback for genres)
+- **Automatic syncing** – GitHub Actions fetches recent plays every 2 hours and regenerates data
+- **Podcast awareness** – Podcast listening is merged into stats and shown separately in yearly charts (via `add-podcast-data`)
 
 ## Prerequisites
 
 - Node.js 20.0.0 or higher
-- npm or yarn package manager
+- npm or yarn
 - Your Spotify Extended Streaming History data (see [Getting Your Data](#getting-your-spotify-data))
 
 ## Getting Your Spotify Data
 
 1. Go to [Spotify's Privacy Settings](https://www.spotify.com/account/privacy/)
-2. Scroll down to "Download your data"
-3. Click "Request data" and select "Extended streaming history"
-4. Wait for Spotify to prepare your data (this can take a few days)
-5. Download the ZIP file when ready
-6. Extract the JSON files - you'll find files named `Streaming_History_Audio_*.json`
+2. Scroll to **Download your data**
+3. Click **Request data** and select **Extended streaming history**
+4. Wait for Spotify to prepare your data (can take a few days)
+5. Download the ZIP, extract it, and locate files named `Streaming_History_Audio_*.json`
 
 ## Installation
 
-1. Fork this repository:
+1. Clone the repository:
+
 ```bash
 git clone https://github.com/YOUR_USERNAME/your-spotify-consolidator.git
 cd your-spotify-consolidator
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 cd web-app && npm install && cd ..
 ```
 
-3. Set up Spotify API credentials (required for automatic syncing and metadata enrichment):
-   - Create a Spotify app at [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
-   - Get your `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`
-   - Set up a redirect URI and get a refresh token (see `scripts/setup-spotify-auth.ts`)
-   - Add to `.env`:
+3. Set up Spotify API credentials (needed for automatic syncing, metadata enrichment, and Now Playing):
+
+   - Create an app at [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+   - Get `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`
+   - Set up a redirect URI and obtain a refresh token (see `scripts/setup-spotify-auth.ts`)
+   - Add to `.env` in the project root:
+
    ```env
    SPOTIFY_CLIENT_ID=your_client_id
    SPOTIFY_CLIENT_SECRET=your_client_secret
    SPOTIFY_REFRESH_TOKEN=your_refresh_token
    ```
 
-4. (Optional) Set up Vercel Blob Storage for cloud file storage:
-   - Install Vercel CLI: `npm i -g vercel`
-   - Link your project: `vercel link`
-   - Get your Blob Store token from [Vercel Dashboard](https://vercel.com/dashboard) → Your Project → Settings → Environment Variables
-   - Add `BLOB_READ_WRITE_TOKEN` to your `.env` file (or set it in Vercel Dashboard for production)
-   - To disable uploads, set `UPLOAD_TO_VERCEL_BLOB=false` in your `.env`
-
 ## Usage
 
 ### Step 1: Add Your Spotify History Data
 
-Place your extracted `Streaming_History_Audio_*.json` files into the `data/spotify-history/` folder:
+Put your extracted `Streaming_History_Audio_*.json` files into `data/spotify-history/`:
 
 ```
 data/
   spotify-history/
     Streaming_History_Audio_2009-2013_0.json
     Streaming_History_Audio_2013-2014_1.json
-    Streaming_History_Audio_2014_2.json
-    ... (all your history files)
+    ...
 ```
 
 ### Step 2: Merge Streaming History
 
-Merge all your streaming history files into a single consolidated file:
+Merge all streaming history files into one:
 
 ```bash
 npm run merge-streaming-history
 ```
 
-This will:
-- Read all `Streaming_History_Audio_*.json` files from `data/spotify-history/`
-- Consolidate entries by song (combining play counts and listening time)
-- Save merged data to `data/merged-streaming-history/merged-streaming-history-{timestamp}.json`
-- Display summary statistics
+This reads all `Streaming_History_Audio_*.json` from `data/spotify-history/`, consolidates by song (play counts and listening time), and writes to `data/merged-streaming-history/merged-streaming-history-{timestamp}.json`.
 
 ### Step 3: Generate Cleaned Files
 
-Generate cleaned and consolidated data files for the web app:
+Generate cleaned data for the web app:
 
 ```bash
 npm run generate-cleaned-files
 ```
 
-This will:
-- Load the merged streaming history
-- Generate cleaned songs, albums, artists, and albums-with-songs files
-- Calculate detailed statistics (yearly listening time, top items, hourly distribution)
-- Enrich with Spotify API metadata (if credentials are configured)
-- Save files to `data/cleaned-data/`
-- Optionally upload to Vercel Blob Storage
+This loads the merged history, builds cleaned songs/albums/artists and albums-with-songs, computes stats (yearly listening, top items, hourly distribution, country data), enriches with Spotify API metadata when configured, and saves to `data/cleaned-data/`.
 
-### Step 4: View Your Statistics
+### Step 4: (Optional) Add Podcast Data to Stats
 
-#### Local Development
+If you have podcast streaming history in your export, add podcast hours into the detailed stats:
 
-Start the web app locally:
+```bash
+npm run add-podcast-data
+```
+
+This updates `detailed-stats-*.json` in `data/cleaned-data/` with podcast listening time per year. The dashboard shows music vs podcast in the yearly chart.
+
+### Step 5: View Your Statistics
+
+**Local development**
 
 ```bash
 npm run web:dev
 ```
 
-Then open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000).
 
-#### Deploy to Vercel
+**Production build**
 
-1. Push your code to GitHub
-2. Import your repository in [Vercel](https://vercel.com)
-3. Vercel will automatically detect the Next.js app and deploy it
-4. Your statistics will be available at your Vercel URL
+```bash
+npm run web:build
+npm run web:start
+```
 
-### Step 5: Set Up Automatic Syncing (Optional)
+**Deploy to Vercel**
 
-GitHub Actions will automatically fetch your recent Spotify plays every 2 hours and keep your data up to date. To enable this:
+1. Push to GitHub and import the repo in [Vercel](https://vercel.com).
+2. Configure environment variables (Spotify, optional GitHub token for Settings).
+3. The app will be available at your Vercel URL.
 
-1. **Set up GitHub Secrets**:
-   - Go to your GitHub repository → **Settings** → **Secrets and variables** → **Actions**
-   - Click **"New repository secret"** and add these secrets:
-   
-   | Secret Name | Value | Description |
-   |-------------|-------|-------------|
-   | `SPOTIFY_CLIENT_ID` | Your Client ID | From Spotify Developer Dashboard |
-   | `SPOTIFY_CLIENT_SECRET` | Your Client Secret | From Spotify Developer Dashboard |
-   | `SPOTIFY_REFRESH_TOKEN` | Your Refresh Token | From `npm run setup-spotify-auth` |
-   | `PERSONAL_ACCESS_TOKEN` | GitHub PAT | Personal Access Token with repo permissions (for pushing updates) |
-   | `BLOB_READ_WRITE_TOKEN` | (Optional) | Vercel Blob Storage token |
-   | `VERCEL_DEPLOY_HOOK` | (Optional) | Vercel deploy hook URL to trigger deployments |
+### Step 6: Set Up Automatic Syncing (Optional)
 
-2. **Enable GitHub Actions**:
-   - Go to the **Actions** tab in your repository
-   - Click **"Enable Actions"** if prompted
-   - The workflow will start running automatically every 2 hours
+The GitHub Action runs every 2 hours and can fetch recent plays, merge data, regenerate cleaned files, add podcast data, commit and push, and optionally trigger a Vercel deploy.
 
-**What happens automatically:**
-- Every 2 hours, GitHub Actions checks for new tracks in your Spotify account
-- If new tracks are found, it fetches recent plays, merges them with your existing data, and generates updated cleaned files
-- Changes are automatically committed and pushed to your repository
-- Optionally triggers a Vercel deployment to update your live site
+1. **GitHub Secrets** (Settings → Secrets and variables → Actions):
 
-**Note**: Spotify API credentials are required for automatic syncing to work. Without them, you'll need to manually run the scripts to update your data.
+   | Secret | Description |
+   |--------|-------------|
+   | `SPOTIFY_CLIENT_ID` | Spotify app Client ID |
+   | `SPOTIFY_CLIENT_SECRET` | Spotify app Client Secret |
+   | `SPOTIFY_REFRESH_TOKEN` | From `npm run setup-spotify-auth` |
+   | `PERSONAL_ACCESS_TOKEN` | GitHub PAT with `repo` (and optionally `actions:write` for trigger-sync) |
 
-The web app includes:
-- **Statistics Dashboard**: Yearly listening trends, hourly distribution, total listening time
-- **Top Songs**: Browse your most-played songs with search and filtering
-- **Top Albums**: View your favorite albums with play counts
-- **Top Artists**: See your most-listened artists
-- **Albums with Details**: Explore albums with track-by-track breakdowns
+2. Enable Actions in the **Actions** tab.
+
+**What runs automatically**
+
+- Every 2 hours: check for new tracks, fetch recent plays, merge with existing history, run `generate-cleaned-files`, run `add-podcast-data`, commit and push, optionally trigger Vercel deploy.
+
+**Manual sync from the app**
+
+- On the **Settings** page, use **Trigger sync** to run the workflow via `workflow_dispatch`. For this to work, the app needs `GITHUB_TOKEN` (or a PAT with `actions:write`) and repo info (`GITHUB_REPO_OWNER` / `GITHUB_REPO_NAME`, or Vercel’s `VERCEL_GIT_REPO_OWNER` / `VERCEL_GIT_REPO_SLUG`).
+
+## Web App Overview
+
+| Page | Description |
+|------|-------------|
+| **Stats** | Yearly listening (music + podcast), hourly distribution, country listening, daily listening heatmap, yearly top songs/artists/albums |
+| **Top Songs** | Searchable list with play counts and metadata |
+| **Top Albums** | Searchable albums with play counts |
+| **Top Artists** | Searchable artists with play counts |
+| **Genres** | Genre co-occurrence network and top artists per genre |
+| **Settings** | Recently played, last sync status, trigger sync |
+
+The app also includes a **Mini Player** (when playback state is available) that shows the current track and progress.
 
 ## Available Scripts
 
 | Script | Description |
 |--------|-------------|
-| `npm run merge-streaming-history` | Merge all streaming history files into one consolidated file |
-| `npm run generate-cleaned-files` | Generate cleaned songs, albums, artists, and stats files |
-| `npm run web:dev` | Start the web app in development mode |
-| `npm run web:build` | Build the web app for production |
+| `npm run merge-streaming-history` | Merge all `Streaming_History_Audio_*.json` into one file |
+| `npm run generate-cleaned-files` | Generate cleaned songs, albums, artists, albums-with-songs, detailed stats, and all-artists-genres |
+| `npm run add-podcast-data` | Add podcast listening time into detailed stats |
+| `npm run setup-spotify-auth` | Obtain Spotify refresh token for API access |
+| `npm run check-for-new-tracks` | Check if there are new plays (used by GitHub Action) |
+| `npm run fetch-recent-plays` | Fetch recent plays from Spotify API |
+| `npm run merge-recent-data` | Merge recent plays into merged streaming history |
+| `npm run web:dev` | Start Next.js dev server |
+| `npm run web:build` | Build Next.js for production |
+| `npm run web:start` | Start Next.js production server |
 
 ## Project Structure
 
 ```
 your-spotify-consolidator/
 ├── data/
-│   ├── spotify-history/          # Place your Streaming_History_Audio_*.json files here
-│   ├── merged-streaming-history/ # Generated merged history files
-│   └── cleaned-data/             # Generated cleaned files for web app
+│   ├── spotify-history/          # Your Streaming_History_Audio_*.json files
+│   ├── merged-streaming-history/ # Merged history (single file per run)
+│   └── cleaned-data/             # Generated files for the web app
 ├── scripts/
 │   ├── merge-streaming-history.ts
-│   ├── cleaner/
-│   │   └── generate-cleaned-files-from-history.ts
-│   └── ...
-├── web-app/                      # Next.js web application
+│   ├── merge-recent-data.ts
+│   ├── fetch-recent-plays.ts
+│   ├── check-for-new-tracks.ts
+│   ├── add-podcast-data-to-stats.ts
+│   ├── setup-spotify-auth.ts
+│   ├── spotify-token-manager.ts
+│   └── cleaner/
+│       ├── generate-cleaned-files-from-history.ts
+│       └── utils/
+├── web-app/                      # Next.js app
 │   ├── app/
-│   │   ├── page.tsx              # Statistics dashboard
+│   │   ├── page.tsx              # Stats dashboard
 │   │   ├── top-songs/
 │   │   ├── top-albums/
 │   │   ├── top-artists/
-│   │   └── api/                  # API routes for data
-│   └── components/
+│   │   ├── genres/
+│   │   ├── settings/
+│   │   └── api/
+│   │       ├── data/             # stats, songs, albums, artists, albums-with-songs, genres, daily-listening
+│   │       ├── spotify/         # recently-played, playback-state
+│   │       ├── trigger-sync/
+│   │       └── sync-status/
+│   └── components/               # MiniPlayer, PlaybackContext, Heatmap, SpotifyStatsLayout, etc.
+├── .github/workflows/
+│   ├── sync-spotify.yml          # Scheduled + manual sync
+│   └── merge-streaming-history.yml
 └── README.md
 ```
 
 ## Data Files Generated
 
-After running `generate-cleaned-files`, you'll find:
+After `generate-cleaned-files`, `data/cleaned-data/` contains:
 
-- `cleaned-songs-{timestamp}.json`: Top 500 songs with play counts
-- `cleaned-albums-{timestamp}.json`: Top 500 albums with play counts
-- `cleaned-artists-{timestamp}.json`: Top 500 artists with play counts
-- `cleaned-albums-with-songs-{timestamp}.json`: Top 100 albums with track breakdowns
-- `detailed-stats-{timestamp}.json`: Comprehensive statistics including yearly trends
+| File | Description |
+|------|-------------|
+| `cleaned-songs-{timestamp}.json` | Top songs with play counts and metadata |
+| `cleaned-albums-{timestamp}.json` | Top albums with play counts |
+| `cleaned-artists-{timestamp}.json` | Top artists with play counts |
+| `cleaned-albums-with-songs-{timestamp}.json` | Top albums with track-level breakdowns |
+| `detailed-stats-{timestamp}.json` | Yearly trends, hourly distribution, country data, yearly top items |
+| `all-artists-genres-{timestamp}.json` | Artists with genres (for Genres page) |
+
+After `add-podcast-data`, `detailed-stats-*.json` also includes podcast listening time per year.
 
 ## Configuration
 
 ### Environment Variables
 
-| Variable | Description | Required | Used By |
+| Variable | Description | Required | Used by |
 |----------|-------------|----------|---------|
-| `SPOTIFY_CLIENT_ID` | Spotify API client ID | **Yes** (for auto-sync) | Local scripts & GitHub Actions |
-| `SPOTIFY_CLIENT_SECRET` | Spotify API client secret | **Yes** (for auto-sync) | Local scripts & GitHub Actions |
-| `SPOTIFY_REFRESH_TOKEN` | Spotify API refresh token | **Yes** (for auto-sync) | Local scripts & GitHub Actions |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob Storage token | No | Local scripts & GitHub Actions |
-| `UPLOAD_TO_VERCEL_BLOB` | Enable/disable blob uploads | No (default: `true`) | Local scripts |
+| `SPOTIFY_CLIENT_ID` | Spotify app Client ID | Yes (for sync / metadata / Now Playing) | Scripts, web app API, GitHub Actions |
+| `SPOTIFY_CLIENT_SECRET` | Spotify app Client Secret | Yes (for sync / metadata) | Scripts, GitHub Actions |
+| `SPOTIFY_REFRESH_TOKEN` | Spotify refresh token | Yes (for sync / metadata) | Scripts, GitHub Actions |
+| `GITHUB_TOKEN` | GitHub token (e.g. Actions token or PAT) | No (for Settings sync/trigger) | Web app (sync-status, trigger-sync) |
+| `GITHUB_REPO_OWNER` / `GITHUB_REPO_NAME` | Repo for workflow API calls | No (or use Vercel’s `VERCEL_GIT_REPO_OWNER` / `VERCEL_GIT_REPO_SLUG`) | Web app (sync-status, trigger-sync) |
 
-**Important Notes**:
-- **Spotify credentials are required** for GitHub Actions automatic syncing to work
-- Without Spotify credentials, you can still process your historical data, but automatic updates won't work
-- Metadata enrichment (album art, artist images) requires Spotify API credentials
-- For GitHub Actions, add these as **GitHub Secrets** (not just `.env` file)
+For GitHub Actions, set Spotify credentials as **repository secrets**. Without Spotify credentials you can still process exported history; automatic sync and metadata enrichment will not work.
 
 ## Troubleshooting
 
-### "No Streaming_History_Audio_*.json files found"
+**"No Streaming_History_Audio_*.json files found"**
 
-- Make sure you've extracted your Spotify data ZIP file
-- Place all `Streaming_History_Audio_*.json` files in the `data/spotify-history/` folder
-- Check that file names start with `Streaming_History_Audio_` and end with `.json`
+- Extract the Spotify data ZIP and place all `Streaming_History_Audio_*.json` files in `data/spotify-history/`.
+- Names must start with `Streaming_History_Audio_` and end with `.json`.
 
-### Web app shows "No data available"
+**Web app shows "No data available"**
 
-- Make sure you've run `npm run generate-cleaned-files` first
-- Check that files exist in `data/cleaned-data/`
-- Verify the API routes can read the files (check file permissions)
+- Run `npm run generate-cleaned-files` first.
+- Ensure `data/cleaned-data/` exists and contains the generated JSON files.
+- If the app runs from `web-app/`, API routes resolve `data/` from the repo root (parent of `web-app/`).
 
-### Metadata enrichment not working
+**Metadata or genres missing**
 
-- Verify your Spotify API credentials are set correctly in `.env`
-- Check that your refresh token is valid (run `npm run setup-spotify-auth` to set it up)
-- The tool will continue without metadata if API calls fail
+- Confirm Spotify credentials in `.env`. Run `npm run setup-spotify-auth` to refresh the refresh token.
+- The pipeline uses MusicBrainz as a fallback for artist genres when Spotify has few or none.
 
-### GitHub Actions not syncing
+**Now Playing / Mini Player not working**
 
-- Verify all required GitHub Secrets are set: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REFRESH_TOKEN`, and `PERSONAL_ACCESS_TOKEN`
-- Check the Actions tab in your repository to see workflow run logs
-- Ensure your refresh token hasn't expired (re-run `npm run setup-spotify-auth` if needed)
-- Verify your Personal Access Token has `repo` permissions
+- Playback state requires the same Spotify app and refresh token; the web app calls the Spotify Web API for current playback. Check `/api/spotify/playback-state` and that the user has played something recently with that account.
+
+**GitHub Actions not syncing**
+
+- Ensure repository secrets: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REFRESH_TOKEN`, `PERSONAL_ACCESS_TOKEN`.
+- In the Actions tab, check the latest workflow run logs.
+- Re-run `npm run setup-spotify-auth` if the refresh token may have been revoked.
+
+**Trigger sync (Settings) fails**
+
+- Set `GITHUB_TOKEN` (or a PAT with `actions:write`) and repo owner/name (or rely on Vercel’s `VERCEL_GIT_REPO_OWNER` / `VERCEL_GIT_REPO_SLUG`).
+- Ensure the workflow file is `.github/workflows/sync-spotify.yml` and has `workflow_dispatch`.
 
 ## License
 

@@ -117,7 +117,7 @@ export default function MiniPlayer({ variant = 'fixed' }: { variant?: 'fixed' | 
 
   return (
     <div className={wrapperClass} aria-label="Now playing">
-      <div className="flex min-w-0 flex-1 items-center">
+      <div className="flex min-w-0 flex-1 items-center pl-3">
         <a
           href={item.external_urls?.spotify ?? SPOTIFY_OPEN_URL}
           target="_blank"

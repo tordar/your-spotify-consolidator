@@ -11,6 +11,7 @@ import { Music2, Users, Play, Clock, Globe, X } from 'lucide-react'
 import { StatsSkeleton } from '@/components/SkeletonLoader'
 import { getCountryName } from '@/lib/country-names'
 import { ListeningHeatmap } from '@/components/Heatmap'
+import MiniPlayer from '@/components/MiniPlayer'
 
 interface YearlyListeningTime {
   year: string
@@ -540,7 +541,11 @@ export default function StatsPage() {
             <>
               {/* Yearly Top Items */}
               {statsData.stats?.yearlyTopItems && statsData.stats.yearlyTopItems.length > 0 && selectedYearData && (
-                <Card>
+                <>
+                  <div className="md:hidden w-full">
+                    <MiniPlayer variant="inline" />
+                  </div>
+                  <Card>
                   <CardHeader>
                     <CardTitle className="mb-4">Top Songs, Artists & Albums by Year</CardTitle>
                     <div className="grid grid-cols-5 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-12 gap-2">
@@ -713,6 +718,7 @@ export default function StatsPage() {
                     </div>
                   </CardContent>
                 </Card>
+                </>
               )}
 
               {/* Summary Stats */}

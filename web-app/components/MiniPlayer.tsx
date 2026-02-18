@@ -13,9 +13,15 @@ function formatMs(ms: number) {
 
 const SPOTIFY_OPEN_URL = 'https://open.spotify.com'
 
-export default function MiniPlayer() {
+const fixedWrapperClass =
+  'fixed bottom-4 right-4 z-50 hidden md:flex max-w-[400px] overflow-hidden rounded-lg border border-white/10 bg-card/95 shadow-lg backdrop-blur-md'
+const inlineWrapperClass =
+  'flex md:hidden w-full overflow-hidden rounded-lg border border-white/10 bg-card/95 shadow-lg backdrop-blur-md'
+
+export default function MiniPlayer({ variant = 'fixed' }: { variant?: 'fixed' | 'inline' }) {
   const { state, error, loading } = usePlayback()
   const [interpolatedProgress, setInterpolatedProgress] = useState<number | null>(null)
+  const wrapperClass = variant === 'inline' ? inlineWrapperClass : fixedWrapperClass
 
   const item = state?.item
   const serverProgressMs = state?.progress_ms ?? 0
@@ -42,9 +48,6 @@ export default function MiniPlayer() {
     return () => cancelAnimationFrame(rafId)
   }, [state?.is_playing, item?.id, item?.duration_ms, serverProgressMs, serverTimestamp])
 
-  const wrapperClass =
-    'fixed bottom-4 right-4 z-50 hidden md:flex max-w-[400px] overflow-hidden rounded-xl border border-white/10 bg-card/95 shadow-lg backdrop-blur-md'
-
   if (loading && !state && !error) {
     return (
       <div className={wrapperClass} aria-label="Now playing">
@@ -57,7 +60,20 @@ export default function MiniPlayer() {
   }
 
   if (error && !state) {
-    return (
+    const content = (
+      <>
+        <AlertCircle className="h-6 w-6 flex-shrink-0" />
+        <span className="text-base truncate" title={error}>
+          Playback unavailable
+        </span>
+        {variant !== 'inline' && <ExternalLink className="h-5 w-5 flex-shrink-0 ml-1" />}
+      </>
+    )
+    return variant === 'inline' ? (
+      <div className={`${wrapperClass} flex items-center gap-3 px-5 py-4 text-muted-foreground`} aria-label="Playback unavailable">
+        {content}
+      </div>
+    ) : (
       <a
         href={SPOTIFY_OPEN_URL}
         target="_blank"
@@ -65,17 +81,24 @@ export default function MiniPlayer() {
         className={`${wrapperClass} flex items-center gap-3 px-5 py-4 text-muted-foreground hover:text-foreground transition-colors`}
         aria-label="Playback unavailable – open Spotify"
       >
-        <AlertCircle className="h-6 w-6 flex-shrink-0" />
-        <span className="text-base truncate" title={error}>
-          Playback unavailable
-        </span>
-        <ExternalLink className="h-5 w-5 flex-shrink-0 ml-1" />
+        {content}
       </a>
     )
   }
 
   if (!item || state?.currently_playing_type === 'ad') {
-    return (
+    const content = (
+      <>
+        <Music2 className="h-6 w-6 flex-shrink-0" />
+        <span className="text-base">Nothing playing</span>
+        {variant !== 'inline' && <ExternalLink className="h-5 w-5 flex-shrink-0 ml-1" />}
+      </>
+    )
+    return variant === 'inline' ? (
+      <div className={`${wrapperClass} flex items-center gap-3 px-5 py-4 text-muted-foreground`} aria-label="Nothing playing">
+        {content}
+      </div>
+    ) : (
       <a
         href={SPOTIFY_OPEN_URL}
         target="_blank"
@@ -83,9 +106,7 @@ export default function MiniPlayer() {
         className={`${wrapperClass} flex items-center gap-3 px-5 py-4 text-muted-foreground hover:text-foreground transition-colors`}
         aria-label="Nothing playing – open Spotify"
       >
-        <Music2 className="h-6 w-6 flex-shrink-0" />
-        <span className="text-base">Nothing playing</span>
-        <ExternalLink className="h-5 w-5 flex-shrink-0 ml-1" />
+        {content}
       </a>
     )
   }
@@ -96,18 +117,18 @@ export default function MiniPlayer() {
 
   return (
     <div className={wrapperClass} aria-label="Now playing">
-      <div className="flex min-w-0 flex-1">
+      <div className="flex min-w-0 flex-1 items-center">
         <a
           href={item.external_urls?.spotify ?? SPOTIFY_OPEN_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="relative flex-shrink-0 overflow-hidden rounded-l-xl bg-muted"
+          className="relative flex-shrink-0 overflow-hidden rounded-lg bg-muted"
         >
           {imageUrl ? (
             <img
               src={imageUrl}
               alt=""
-              className="h-20 w-20 object-cover"
+              className="block h-20 w-20 object-cover"
               width={80}
               height={80}
             />
@@ -115,9 +136,6 @@ export default function MiniPlayer() {
             <div className="flex h-20 w-20 items-center justify-center text-muted-foreground">
               <Music2 className="h-8 w-8" />
             </div>
-          )}
-          {state?.is_playing && (
-            <span className="absolute bottom-1.5 right-1.5 h-2 w-2 rounded-full bg-green-500" title="Playing" />
           )}
         </a>
         <div className="flex min-w-0 flex-1 flex-col justify-center px-4 py-3">
@@ -137,15 +155,17 @@ export default function MiniPlayer() {
             {formatMs(progressMs)} / {formatMs(item.duration_ms)}
           </p>
         </div>
-        <a
-          href={item.external_urls?.spotify ?? SPOTIFY_OPEN_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex flex-shrink-0 items-center justify-center px-3 text-muted-foreground hover:text-foreground"
-          aria-label="Open in Spotify"
-        >
-          <ExternalLink className="h-5 w-5" />
-        </a>
+        {variant !== 'inline' && (
+          <a
+            href={item.external_urls?.spotify ?? SPOTIFY_OPEN_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex flex-shrink-0 items-center justify-center px-3 text-muted-foreground hover:text-foreground"
+            aria-label="Open in Spotify"
+          >
+            <ExternalLink className="h-5 w-5" />
+          </a>
+        )}
       </div>
     </div>
   )

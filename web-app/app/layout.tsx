@@ -11,6 +11,9 @@ const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jet
 export const metadata = {
   title: 'Spotify Pulse',
   description: 'Your Spotify listening: historic, current, and daily insights',
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({

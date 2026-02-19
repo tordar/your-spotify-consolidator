@@ -70,7 +70,7 @@ export default function AllTimeStatsCard({
         {!hasAny ? (
           <p className="text-muted-foreground text-sm">No stats available.</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 gap-4 sm:gap-6">
             <div className="space-y-4">
               {totalListeningHours != null &&
                 statBlock(
@@ -90,7 +90,7 @@ export default function AllTimeStatsCard({
             <div className="space-y-4">
               {dailyAvgHours != null &&
                 statBlock(
-                  'Daily average (since first play)',
+                  'Daily average',
                   formatDuration(dailyAvgHours * 60 * 60 * 1000)
                 )}
               {yearlyAvgHours != null &&

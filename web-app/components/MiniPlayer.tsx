@@ -14,7 +14,7 @@ function formatMs(ms: number) {
 const SPOTIFY_OPEN_URL = 'https://open.spotify.com'
 
 const fixedWrapperClass =
-  'fixed bottom-4 right-4 z-50 hidden md:flex max-w-[400px] overflow-hidden rounded-lg border border-white/10 bg-card/95 shadow-lg backdrop-blur-md'
+  'fixed bottom-4 right-4 z-50 hidden md:flex min-w-[360px] max-w-[400px] overflow-hidden rounded-lg border border-white/10 bg-card/95 shadow-lg backdrop-blur-md'
 const inlineWrapperClass =
   'flex md:hidden w-full overflow-hidden rounded-lg border border-white/10 bg-card/95 shadow-lg backdrop-blur-md'
 

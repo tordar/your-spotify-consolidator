@@ -565,7 +565,7 @@ export default function StatsPage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                    <div key={selectedYear} className="year-content-transition grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                       {/* Top Songs */}
                       <div>
                         <div className="flex items-center gap-2 mb-4">

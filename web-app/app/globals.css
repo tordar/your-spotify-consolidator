@@ -84,6 +84,21 @@
   }
 }
 
+/* Yearly Top Items: quick smooth transition when switching years */
+@keyframes year-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.year-content-transition {
+  animation: year-content-in 0.25s ease-out;
+}
+
 /* Listening activity heatmap (GitHub workout-heatmap style) */
 .heatmap-root {
   --heatmap-cell: 16px;

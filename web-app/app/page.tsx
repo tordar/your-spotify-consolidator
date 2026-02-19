@@ -528,7 +528,7 @@ export default function StatsPage() {
   return (
     <SpotifyStatsLayout
       title="Spotify Pulse"
-      description="Your listening: historic, current, and daily"
+      description="Your listening history: past, present, and future"
       currentPage="stats"
     >
       {loading ? (
@@ -795,26 +795,6 @@ export default function StatsPage() {
                 </Card>
               )}
 
-              {/* Hourly Listening Distribution Chart */}
-              {statsData.stats?.hourlyListeningDistribution && statsData.stats.hourlyListeningDistribution.length > 0 ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Hourly Listening Distribution</CardTitle>
-                  </CardHeader>
-                  <CardContent className="px-2 sm:px-6">
-                    <div className="w-full -mx-2 sm:mx-0">
-                      {mounted && (
-                        <HighchartsReact
-                          highcharts={Highcharts}
-                          options={getHourlyChartOptions()}
-                          ref={hourlyChartComponentRef}
-                        />
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : null}
-
               {/* Year-to-date listening heatmap (scrollable horizontally on mobile) */}
               <Card>
                 <CardHeader>
@@ -1009,6 +989,26 @@ export default function StatsPage() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Hourly Listening Distribution Chart */}
+              {statsData.stats?.hourlyListeningDistribution && statsData.stats.hourlyListeningDistribution.length > 0 ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Hourly Listening Distribution</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-2 sm:px-6">
+                    <div className="w-full -mx-2 sm:mx-0">
+                      {mounted && (
+                        <HighchartsReact
+                          highcharts={Highcharts}
+                          options={getHourlyChartOptions()}
+                          ref={hourlyChartComponentRef}
+                        />
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
 
               {/* Country Listening Data */}
               {statsData.stats?.countryListeningData && statsData.stats.countryListeningData.length > 0 ? (

@@ -12,6 +12,8 @@ import { StatsSkeleton } from '@/components/SkeletonLoader'
 import { getCountryName } from '@/lib/country-names'
 import { ListeningHeatmap } from '@/components/Heatmap'
 import MiniPlayer from '@/components/MiniPlayer'
+import TodaysListeningCard from '@/components/TodaysListeningCard'
+import AllTimeStatsCard from '@/components/AllTimeStatsCard'
 
 interface YearlyListeningTime {
   year: string
@@ -323,17 +325,17 @@ export default function StatsPage() {
             const podcastHours = podcastData[pointIndex] || 0
             const estimatedAdditional = this.y as number
             const estimatedTotal = actualHours + podcastHours + estimatedAdditional
-            return `<b>${year} (Estimated Total)</b><br/>${estimatedTotal.toFixed(2)} hours<br/><span style="color: ${mutedColor}">Projected if current pace continues</span>`
+            return `<b>${year} (Estimated Total)</b><br/>${formatDuration(estimatedTotal * 60 * 60 * 1000)}<br/><span style="color: ${mutedColor}">Projected if current pace continues</span>`
           } else if (this.series.name === 'Podcast Hours') {
             const podcastHours = this.y as number
             const musicHours = data[pointIndex] || 0
             const totalHours = musicHours + podcastHours
-            return `<b>${year}</b><br/>Podcast: ${podcastHours.toFixed(2)} hours<br/>Music: ${musicHours.toFixed(2)} hours<br/>Total: ${totalHours.toFixed(2)} hours`
+            return `<b>${year}</b><br/>Podcast: ${formatDuration(podcastHours * 60 * 60 * 1000)}<br/>Music: ${formatDuration(musicHours * 60 * 60 * 1000)}<br/>Total: ${formatDuration(totalHours * 60 * 60 * 1000)}`
           } else {
             const musicHours = this.y as number
             const podcastHours = podcastData[pointIndex] || 0
             const totalHours = musicHours + podcastHours
-            return `<b>${year}</b><br/>Music: ${musicHours.toFixed(2)} hours${podcastHours > 0 ? `<br/>Podcast: ${podcastHours.toFixed(2)} hours<br/>Total: ${totalHours.toFixed(2)} hours` : ''}`
+            return `<b>${year}</b><br/>Music: ${formatDuration(musicHours * 60 * 60 * 1000)}${podcastHours > 0 ? `<br/>Podcast: ${formatDuration(podcastHours * 60 * 60 * 1000)}<br/>Total: ${formatDuration(totalHours * 60 * 60 * 1000)}` : ''}`
           }
         }
       },
@@ -473,7 +475,8 @@ export default function StatsPage() {
           const pointIndex = typeof this.x === 'number' ? this.x : (this.index ?? 0)
           const hourData = sortedData[pointIndex]
           const hourLabel = categories[pointIndex] || `${hourData.hour.toString().padStart(2, '0')}:00`
-          return `<b>${hourLabel}</b><br/>${this.y?.toFixed(2)} hours<br/>${hourData.playCount} plays`
+          const hours = (this.y as number) ?? 0
+          return `<b>${hourLabel}</b><br/>${formatDuration(hours * 60 * 60 * 1000)}<br/>${hourData.playCount} plays`
         }
       },
       plotOptions: {
@@ -721,48 +724,28 @@ export default function StatsPage() {
                 </>
               )}
 
-              {/* Summary Stats */}
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {statsData.stats?.totalListeningHours && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Total Listening Hours</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold">
-                        {statsData.stats.totalListeningHours.toLocaleString(undefined, {
-                          maximumFractionDigits: 2
-                        })}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-                {statsData.stats?.totalListeningDays && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Total Listening Days</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold">
-                        {statsData.stats.totalListeningDays.toLocaleString(undefined, {
-                          maximumFractionDigits: 2
-                        })}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-                {statsData.stats?.totalListeningEvents && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Total Songs Played</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold">
-                        {statsData.stats.totalListeningEvents.toLocaleString()}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
+              {/* Summary: Today's listening (left) + All-time stats (right) */}
+              <div className="grid gap-6 md:grid-cols-2">
+                <TodaysListeningCard
+                  dailyData={dailyListening?.data}
+                  loading={dailyListeningLoading}
+                  selectedHeatmapYear={selectedHeatmapYear}
+                  formatDuration={formatDuration}
+                />
+                <AllTimeStatsCard
+                  totalListeningHours={statsData?.stats?.totalListeningHours}
+                  totalListeningDays={statsData?.stats?.totalListeningDays}
+                  totalListeningEvents={statsData?.stats?.totalListeningEvents}
+                  earliestYear={
+                    statsData?.stats?.yearlyListeningTime?.length
+                      ? Math.min(
+                          ...statsData.stats.yearlyListeningTime.map((y) => parseInt(y.year, 10))
+                        )
+                      : null
+                  }
+                  yearCount={statsData?.stats?.yearlyListeningTime?.length ?? null}
+                  formatDuration={formatDuration}
+                />
               </div>
               {/* Yearly Listening Hours Chart */}
               {statsData.stats?.yearlyListeningTime && statsData.stats.yearlyListeningTime.length > 0 ? (

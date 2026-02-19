@@ -1,6 +1,8 @@
 'use client'
 
 import { ReactNode, useEffect, useState, useRef } from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
 import { Menu } from 'lucide-react'
 import SpotifyStatsNav from './SpotifyStatsNav'
 import { Button } from './ui/button'
@@ -112,7 +114,15 @@ export default function SpotifyStatsLayout({
         <div className="bg-card/95 backdrop-blur-md border-b border-white/10 shadow-lg">
           <div className="max-w-7xl mx-auto px-3 sm:px-4">
             <div className="flex items-center justify-between gap-2 sm:gap-4 py-3 sm:py-4">
-              {/* Spacer – pushes hamburger to the right on mobile */}
+              {/* App icon (mobile) – top left, links to home */}
+              <Link
+                href="/"
+                className="flex-shrink-0 md:hidden flex items-center justify-center rounded-full overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary/50"
+                aria-label="Spotify Pulse home"
+              >
+                <Image src="/icon.svg" alt="" width={32} height={32} className="w-8 h-8" />
+              </Link>
+              {/* Spacer – pushes content; on desktop no icon so spacer only */}
               <div className="flex-1 min-w-0 md:flex-none" />
 
               {/* Condensed Title - Hidden on very small screens, shown on md+ */}

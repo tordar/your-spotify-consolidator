@@ -13,6 +13,12 @@ export const metadata = {
   description: 'Your Spotify listening: historic, current, and daily insights',
   icons: {
     icon: '/icon.svg',
+    apple: '/icon.svg',
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'Spotify Pulse',
+    statusBarStyle: 'default',
   },
 };
 

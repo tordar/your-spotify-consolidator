@@ -1,6 +1,6 @@
-# Your Spotify Consolidator 🧹🔄📊
+# Spotify Pulse
 
-A tool to process, consolidate, and visualize your complete Spotify listening history. Transform your raw Spotify Extended Streaming History (and optional recent plays) into statistics and insights through a modern web interface.
+Your Spotify listening: historic, current, and daily. Process and visualize your complete listening history, see what you’re playing now, and keep insights up to date with continuous syncing. Transform exported Spotify data (and optional recent plays) into statistics and a modern web dashboard.
 
 ## Features
 
@@ -36,8 +36,8 @@ A tool to process, consolidate, and visualize your complete Spotify listening hi
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/your-spotify-consolidator.git
-cd your-spotify-consolidator
+git clone https://github.com/YOUR_USERNAME/spotify-pulse.git
+cd spotify-pulse
 ```
 
 2. Install dependencies:
@@ -181,7 +181,7 @@ The app also includes a **Mini Player** (when playback state is available) that 
 ## Project Structure
 
 ```
-your-spotify-consolidator/
+spotify-pulse/
 ├── data/
 │   ├── spotify-history/          # Your Streaming_History_Audio_*.json files
 │   ├── merged-streaming-history/ # Merged history (single file per run)

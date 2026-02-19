@@ -1,7 +1,7 @@
 {
-  "name": "spotify-consolidator-web",
+"name": "spotify-pulse-web",
   "version": "1.0.0",
-  "description": "Spotify Consolidator Web Application",
+  "description": "Spotify Pulse Web Application",
   "private": true,
   "scripts": {
     "dev": "next dev",

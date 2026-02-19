@@ -148,7 +148,7 @@ export default function SettingsPage() {
   return (
     <SpotifyStatsLayout
       title="Settings"
-      description="Customize your Spotify statistics experience"
+      description="Customize your Spotify Pulse experience"
       currentPage="settings"
     >
       <div className="space-y-6">

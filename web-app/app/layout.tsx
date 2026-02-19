@@ -8,6 +8,11 @@ import { Analytics } from '@vercel/analytics/react';
 
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains-mono' });
 
+export const metadata = {
+  title: 'Spotify Pulse',
+  description: 'Your Spotify listening: historic, current, and daily insights',
+};
+
 export default function RootLayout({
   children,
 }: {

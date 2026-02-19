@@ -10,9 +10,9 @@ export class MusicBrainzApiClient {
 
   constructor() {
     this.mbApi = new MusicBrainzApi({
-      appName: 'your-spotify-consolidator',
+      appName: 'spotify-pulse',
       appVersion: '1.0.0',
-      appContactInfo: 'https://github.com/your-username/your-spotify-consolidator' // Required by MusicBrainz
+      appContactInfo: 'https://github.com/tordar/spotify-pulse' // Required by MusicBrainz
     });
   }
 

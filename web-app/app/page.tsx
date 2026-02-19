@@ -527,8 +527,8 @@ export default function StatsPage() {
   
   return (
     <SpotifyStatsLayout
-      title="Spotify Statistics"
-      description="Detailed insights into your listening habits"
+      title="Spotify Pulse"
+      description="Your listening: historic, current, and daily"
       currentPage="stats"
     >
       {loading ? (

@@ -1,7 +1,7 @@
 {
-  "name": "your-spotify-consolidator",
+  "name": "spotify-pulse",
   "version": "1.0.0",
-  "description": "A tool to fetch and consolidate Spotify top albums data",
+  "description": "Your Spotify listening: historic, current, and daily insights",
   "main": "index.js",
   "scripts": {
     "check-for-new-tracks": "tsx scripts/check-for-new-tracks.ts",
@@ -49,11 +49,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tordar/your-spotify-consolidator.git"
+    "url": "git+https://github.com/tordar/spotify-pulse.git"
   },
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/tordar/your-spotify-consolidator/issues"
+    "url": "https://github.com/tordar/spotify-pulse/issues"
   },
-  "homepage": "https://github.com/tordar/your-spotify-consolidator#readme"
+  "homepage": "https://github.com/tordar/spotify-pulse#readme"
 }

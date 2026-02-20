@@ -34,6 +34,11 @@ data/top-songs-*.json
 data/top-albums-*.json
 data/top-artists-*.json
 
+# Template/personal data – ignored so forks don't get your data. Use `git add -f` to add your own.
+data/spotify-history/*.json
+data/merged-streaming-history/*.json
+data/cleaned-data/*.json
+
 # IDE files
 .vscode/
 .idea/

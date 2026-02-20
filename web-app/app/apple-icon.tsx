@@ -10,19 +10,30 @@ export default function AppleIcon() {
         style={{
           width: '100%',
           height: '100%',
-          borderRadius: '50%',
-          background: '#1DB954',
+          background: '#000000',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          padding: '15%',
         }}
       >
-        <svg
-          width="150"
-          height="150"
-          viewBox="0 0 100 100"
-          fill="none"
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            borderRadius: '50%',
+            background: '#1DB954',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
+          <svg
+            width="150"
+            height="150"
+            viewBox="0 0 100 100"
+            fill="none"
+          >
           <path
             d="M 16 28 L 26 28 L 32 16 L 38 28 L 50 28 L 58 16 L 64 28 L 84 28"
             stroke="black"
@@ -47,7 +58,8 @@ export default function AppleIcon() {
             strokeLinejoin="round"
             fill="none"
           />
-        </svg>
+          </svg>
+        </div>
       </div>
     ),
     { ...size }

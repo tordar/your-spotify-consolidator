@@ -20,7 +20,8 @@ export const metadata = {
       { url: '/icon', type: 'image/png', sizes: '32x32' },
       { url: `/icon.svg?v=${ICON_VERSION}`, type: 'image/svg+xml', sizes: 'any' },
     ],
-    apple: `/icon.svg?v=${ICON_VERSION}`,
+    // PNG required for "Add to Home Screen" – iOS/Android ignore SVG for this
+    apple: [{ url: '/apple-icon', type: 'image/png', sizes: '180x180' }],
   },
   appleWebApp: {
     capable: true,

@@ -10,10 +10,14 @@ on:
 jobs:
   sync-spotify-data:
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: write  # so the workflow can push commits
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
         
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -82,7 +86,7 @@ jobs:
       - name: Push changes
         if: steps.check-tracks.outcome == 'success'
         run: |
-          git push https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git master
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git master
           
       - name: Trigger Vercel deployment
         if: steps.check-tracks.outcome == 'success'  # Only deploy if new tracks were processed

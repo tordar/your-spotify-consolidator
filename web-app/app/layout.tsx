@@ -15,7 +15,11 @@ export const metadata = {
   title: 'Spotify Pulse',
   description: 'Your Spotify listening: historic, current, and daily insights',
   icons: {
-    icon: `/icon.svg?v=${ICON_VERSION}`,
+    // PNG first so Chrome on mobile picks it (Chrome often ignores SVG favicons)
+    icon: [
+      { url: '/icon', type: 'image/png', sizes: '32x32' },
+      { url: `/icon.svg?v=${ICON_VERSION}`, type: 'image/svg+xml', sizes: 'any' },
+    ],
     apple: `/icon.svg?v=${ICON_VERSION}`,
   },
   appleWebApp: {

@@ -1,3 +1,4 @@
+# Merge Streaming History – runs on push to data/spotify-history and workflow_dispatch
 name: Merge Streaming History
 
 on:

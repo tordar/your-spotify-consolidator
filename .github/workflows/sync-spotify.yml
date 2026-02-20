@@ -1,3 +1,4 @@
+# Spotify Data Sync – runs on schedule and workflow_dispatch
 name: Spotify Data Sync
 
 on:

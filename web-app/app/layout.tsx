@@ -8,12 +8,15 @@ import { Analytics } from '@vercel/analytics/react';
 
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains-mono' });
 
+// Bump this when you change the favicon so iOS and other caches fetch the new icon
+const ICON_VERSION = '2'
+
 export const metadata = {
   title: 'Spotify Pulse',
   description: 'Your Spotify listening: historic, current, and daily insights',
   icons: {
-    icon: '/icon.svg',
-    apple: '/icon.svg',
+    icon: `/icon.svg?v=${ICON_VERSION}`,
+    apple: `/icon.svg?v=${ICON_VERSION}`,
   },
   appleWebApp: {
     capable: true,

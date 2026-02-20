@@ -167,8 +167,7 @@ The app also includes a **Mini Player** (when playback state is available) that 
 | `npm run generate-cleaned-files` | Generate cleaned songs, albums, artists, albums-with-songs, detailed stats, and all-artists-genres |
 | `npm run add-podcast-data` | Add podcast listening time into detailed stats |
 | `npm run setup-spotify-auth` | Obtain Spotify refresh token for API access |
-| `npm run check-for-new-tracks` | Check if there are new plays (used by GitHub Action) |
-| `npm run fetch-recent-plays` | Fetch recent plays from Spotify API |
+| `npm run fetch-recent-plays` | Check for new plays and fetch recent plays from Spotify API (exits without fetching if none) |
 | `npm run merge-recent-data` | Merge recent plays into merged streaming history |
 | `npm run web:dev` | Start Next.js dev server |
 | `npm run web:build` | Build Next.js for production |
@@ -186,7 +185,6 @@ spotify-pulse/
 │   ├── merge-streaming-history.ts
 │   ├── merge-recent-data.ts
 │   ├── fetch-recent-plays.ts
-│   ├── check-for-new-tracks.ts
 │   ├── add-podcast-data-to-stats.ts
 │   ├── setup-spotify-auth.ts
 │   ├── spotify-token-manager.ts

@@ -60,7 +60,9 @@ export async function GET() {
 
     if (!repoOwner || !repoName) {
       return NextResponse.json(
-        { error: 'Repository information not configured' },
+        {
+          error: 'Repository information not configured. Set GITHUB_REPO_OWNER and GITHUB_REPO_NAME (or deploy from Vercel so VERCEL_GIT_REPO_OWNER and VERCEL_GIT_REPO_SLUG are set).',
+        },
         { status: 500 }
       )
     }

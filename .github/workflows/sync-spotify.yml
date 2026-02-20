@@ -33,31 +33,20 @@ jobs:
           git fetch origin master
           git pull --rebase origin master || git pull --no-edit origin master || echo "No remote changes to pull"
         
-      - name: Check for new tracks
-        id: check-tracks
-        env:
-          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
-          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
-          SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
-        run: |
-          npm run check-for-new-tracks
-          echo "has_new_tracks=true" >> $GITHUB_OUTPUT
-        continue-on-error: true
-        
       - name: Fetch recent Spotify plays
-        if: steps.check-tracks.outcome == 'success'
+        id: fetch-plays
         env:
           SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
           SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
           SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
         run: npm run fetch-recent-plays
-        
+
       - name: Merge recent data with merged streaming history
-        if: steps.check-tracks.outcome == 'success'
+        if: steps.fetch-plays.outcome == 'success'
         run: npm run merge-recent-data
         
       - name: Generate cleaned and consolidated data files
-        if: steps.check-tracks.outcome == 'success'
+        if: steps.fetch-plays.outcome == 'success'
         env:
           SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
           SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
@@ -65,24 +54,30 @@ jobs:
         run: npm run generate-cleaned-files
         
       - name: Add podcast data to stats
-        if: steps.check-tracks.outcome == 'success'
+        if: steps.fetch-plays.outcome == 'success'
         run: npm run add-podcast-data
         
       - name: Pull latest changes
-        if: steps.check-tracks.outcome == 'success'
+        if: steps.fetch-plays.outcome == 'success'
         run: |
           git fetch origin master
           git pull --rebase origin master || git pull --no-edit origin master || echo "No remote changes to pull"
           
       - name: Commit changes
-        if: steps.check-tracks.outcome == 'success'
+        if: steps.fetch-plays.outcome == 'success'
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add data/merged-streaming-history/ data/cleaned-data/
+          # Require at least one merged file so we never commit deletion-only (gitignore would skip new file without -f)
+          MERGED_COUNT=$(ls -1 data/merged-streaming-history/merged-streaming-history-*.json 2>/dev/null | wc -l)
+          if [ "$MERGED_COUNT" -eq 0 ]; then
+            echo "::error::No merged-streaming-history file found after merge; skipping commit to avoid deleting data"
+            exit 1
+          fi
+          git add -f data/merged-streaming-history/ data/cleaned-data/
           git diff --staged --quiet || git commit -m "Spotify sync $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           
       - name: Push changes
-        if: steps.check-tracks.outcome == 'success'
+        if: steps.fetch-plays.outcome == 'success'
         run: |
           git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git master

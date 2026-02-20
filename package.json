@@ -4,7 +4,6 @@
   "description": "Your Spotify listening: historic, current, and daily insights",
   "main": "index.js",
   "scripts": {
-    "check-for-new-tracks": "tsx scripts/check-for-new-tracks.ts",
     "fetch-recent-plays": "tsx scripts/fetch-recent-plays.ts",
     "merge-recent-data": "tsx scripts/merge-recent-data.ts",
     "merge-streaming-history": "tsx scripts/merge-streaming-history.ts",

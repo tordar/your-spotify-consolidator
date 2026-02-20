@@ -1,6 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { glob } from 'glob';
 import { SpotifyTokenManager } from './spotify-token-manager';
+
+interface MergedHistoryMetadata {
+  metadata?: {
+    dateRange?: { latest: string };
+  };
+}
 
 interface SpotifyTrack {
   id: string;
@@ -67,6 +74,50 @@ class SpotifyRecentPlaysFetcher {
 
   constructor() {
     this.tokenManager = new SpotifyTokenManager();
+  }
+
+  /**
+   * Check if there are new plays since the latest in merged history.
+   * Returns true if we should fetch (new tracks, no history, or check failed).
+   */
+  async hasNewTracks(): Promise<boolean> {
+    let files = glob.sync('data/merged-streaming-history/merged-streaming-history-*.json');
+    if (files.length === 0) {
+      console.log('ℹ️  No existing history found, will fetch recent plays');
+      return true;
+    }
+    files.sort((a, b) => {
+      const tsA = parseInt(a.match(/merged-streaming-history-(\d+)\.json/)?.[1] || '0');
+      const tsB = parseInt(b.match(/merged-streaming-history-(\d+)\.json/)?.[1] || '0');
+      return tsB - tsA;
+    });
+    const historyData = JSON.parse(fs.readFileSync(files[0], 'utf8')) as MergedHistoryMetadata;
+    const latestTimestamp = historyData.metadata?.dateRange?.latest;
+    if (!latestTimestamp) {
+      console.log('ℹ️  No timestamp in history, will fetch recent plays');
+      return true;
+    }
+    const latestHistoryTime = new Date(latestTimestamp).getTime();
+    console.log(`📅 Latest track in history: ${latestTimestamp}`);
+
+    const accessToken = await this.tokenManager.getValidAccessToken();
+    const response = await fetch('https://api.spotify.com/v1/me/player/recently-played?limit=10', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!response.ok) {
+      console.log('⚠️  Could not check recent plays, will fetch anyway');
+      return true;
+    }
+    const data = (await response.json()) as { items: Array<{ played_at: string }> };
+    if (!data.items?.length) {
+      console.log('ℹ️  No recent plays from API');
+      return false;
+    }
+    const hasNew = data.items.some(item => new Date(item.played_at).getTime() > latestHistoryTime);
+    if (!hasNew) {
+      console.log('ℹ️  No new tracks since last run');
+    }
+    return hasNew;
   }
 
   /**
@@ -157,10 +208,15 @@ class SpotifyRecentPlaysFetcher {
   }
 
   /**
-   * Main function to fetch and save recent plays
+   * Main: check for new tracks, then fetch and save recent plays if needed.
+   * Exits 1 when there are no new tracks (so CI can skip merge step).
    */
   async fetchAndSaveRecentPlays(): Promise<string> {
     try {
+      const shouldFetch = await this.hasNewTracks();
+      if (!shouldFetch) {
+        process.exit(1);
+      }
       const recentPlays = await this.fetchRecentPlays();
       const filename = await this.saveRecentPlays(recentPlays);
       console.log('🎉 Recent plays fetch completed successfully!');

@@ -179,14 +179,13 @@ export default function SettingsPage() {
                 <section>
                   <h3 className="flex items-center gap-2 font-semibold text-sm mb-2">
                     <Trash2 className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
-                    1. Fork the repo and remove template data from the data folder
+                    1. Fork the repo
                   </h3>
                   <p className="text-sm text-muted-foreground mb-2">
-                    <a href="https://github.com/tordar/spotify-pulse/fork" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Fork the repository <ExternalLink className="w-3 h-3" /></a> to your own GitHub account so you have your own copy to push to and deploy from. The template repo ignores data files (via .gitignore) so your fork won&apos;t include the author&apos;s data. Add your own export there.
+                    <a href="https://github.com/tordar/spotify-pulse/fork" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Fork the repository <ExternalLink className="w-3 h-3" /></a> to your own GitHub account so you have your own copy to push to and deploy from. The template does not include any personal data—data paths are in .gitignore, so your fork will have empty <code className="text-foreground/80">data/spotify-history/</code>, <code className="text-foreground/80">data/merged-streaming-history/</code>, and <code className="text-foreground/80">data/cleaned-data/</code> folders. Add your own export in the next step.
                   </p>
                   <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
-                    <li>If your fork already has template data (e.g. from an older clone), run <code className="text-foreground/80 bg-muted px-1 rounded">npm run remove-template-data</code> from the project root (use <code className="text-foreground/80 bg-muted px-1 rounded">--yes</code> to skip the prompt), then add your <code className="text-foreground/80">Streaming_History_Audio_*.json</code> files to <code className="text-foreground/80">data/spotify-history/</code>.</li>
-                    <li>When adding your own data, use <code className="text-foreground/80 bg-muted px-1 rounded">git add -f data/spotify-history/</code> to force-add (those paths are gitignored so forks stay clean).</li>
+                    <li>When adding your data files, use <code className="text-foreground/80 bg-muted px-1 rounded">git add -f data/spotify-history/</code> to force-add (those paths are gitignored so the template stays clean for others).</li>
                   </ul>
                 </section>
 

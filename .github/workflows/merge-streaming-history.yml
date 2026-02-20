@@ -13,10 +13,14 @@ on:
 jobs:
   merge-history:
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -76,11 +80,11 @@ jobs:
           git config --local user.name "GitHub Action"
           
           if [ -d "data/merged-streaming-history" ] || [ -d "data/cleaned-data" ]; then
-            git add data/merged-streaming-history/ data/cleaned-data/
+            git add -f data/merged-streaming-history/ data/cleaned-data/
             if git diff --staged --quiet; then
               echo "No changes to commit"
             else
               git commit -m "Auto-merge streaming history data and regenerate cleaned files [skip ci]"
-              git push
+              git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git master
             fi
           fi

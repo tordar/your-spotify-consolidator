@@ -8,31 +8,30 @@ on:
   workflow_dispatch: # Allow manual triggers
 
 jobs:
-  sync-spotify-data:
+  fetch-check:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write  # so the workflow can push commits
-
+    outputs:
+      has_new_tracks: ${{ steps.fetch-result.outputs.has_new_tracks }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-          
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Pull latest changes
         run: |
           git fetch origin master
           git pull --rebase origin master || git pull --no-edit origin master || echo "No remote changes to pull"
-        
+
       - name: Fetch recent Spotify plays
         id: fetch-plays
         env:
@@ -40,53 +39,147 @@ jobs:
           SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
           SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
         run: npm run fetch-recent-plays
+        continue-on-error: true
 
       - name: Set fetch result
         id: fetch-result
         run: |
-          if [ -f temp/fetch-result.txt ] && grep -q "HAS_NEW_TRACKS=true" temp/fetch-result.txt; then
+          if [ "${{ steps.fetch-plays.outcome }}" != "success" ]; then
+            echo "has_new_tracks=false" >> $GITHUB_OUTPUT
+          elif [ "${{ steps.fetch-plays.outputs.has_new_tracks }}" = "true" ]; then
+            echo "has_new_tracks=true" >> $GITHUB_OUTPUT
+          elif [ -f temp/fetch-result.txt ] && grep -q "HAS_NEW_TRACKS=true" temp/fetch-result.txt; then
             echo "has_new_tracks=true" >> $GITHUB_OUTPUT
           else
             echo "has_new_tracks=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Upload recent plays
+        if: steps.fetch-result.outputs.has_new_tracks == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: recent-plays
+          path: temp/temp-recent-plays-*.json
+
+  merge-data:
+    needs: fetch-check
+    if: needs.fetch-check.outputs.has_new_tracks == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download recent plays
+        uses: actions/download-artifact@v4
+        with:
+          name: recent-plays
+
+      - name: Move recent plays to temp
+        run: |
+          mkdir -p temp
+          mv temp-recent-plays-*.json temp/ 2>/dev/null || true
+
+      - name: Pull latest changes
+        run: |
+          git fetch origin master
+          git pull --rebase origin master || git pull --no-edit origin master || echo "No remote changes to pull"
+
       - name: Merge recent data with merged streaming history
-        if: steps.fetch-result.outputs.has_new_tracks == 'true'
         run: npm run merge-recent-data
-        
+
+      - name: Upload merged data
+        uses: actions/upload-artifact@v4
+        with:
+          name: merged-data
+          path: data/merged-streaming-history/
+
+  generate-files:
+    needs: [fetch-check, merge-data]
+    if: needs.fetch-check.outputs.has_new_tracks == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download merged data
+        uses: actions/download-artifact@v4
+        with:
+          name: merged-data
+
       - name: Generate cleaned and consolidated data files
-        if: steps.fetch-result.outputs.has_new_tracks == 'true'
         env:
           SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
           SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
           SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
         run: npm run generate-cleaned-files
-        
+
       - name: Add podcast data to stats
-        if: steps.fetch-result.outputs.has_new_tracks == 'true'
         run: npm run add-podcast-data
-        
+
+      - name: Upload data for commit
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-data
+          path: |
+            data/merged-streaming-history/
+            data/cleaned-data/
+
+  commit-and-push:
+    needs: [fetch-check, generate-files]
+    if: needs.fetch-check.outputs.has_new_tracks == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+      - name: Download sync data
+        uses: actions/download-artifact@v4
+        with:
+          name: sync-data
+
       - name: Pull latest changes
-        if: steps.fetch-result.outputs.has_new_tracks == 'true'
         run: |
           git fetch origin master
           git pull --rebase origin master || git pull --no-edit origin master || echo "No remote changes to pull"
-          
+
       - name: Commit changes
-        if: steps.fetch-result.outputs.has_new_tracks == 'true'
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          # Require at least one merged file so we never commit deletion-only (gitignore would skip new file without -f)
           MERGED_COUNT=$(ls -1 data/merged-streaming-history/merged-streaming-history-*.json 2>/dev/null | wc -l)
           if [ "$MERGED_COUNT" -eq 0 ]; then
-            echo "::error::No merged-streaming-history file found after merge; skipping commit to avoid deleting data"
+            echo "::error::No merged-streaming-history file found; skipping commit"
             exit 1
           fi
           git add -f data/merged-streaming-history/ data/cleaned-data/
           git diff --staged --quiet || git commit -m "Spotify sync $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-          
+
       - name: Push changes
-        if: steps.fetch-result.outputs.has_new_tracks == 'true'
         run: |
           git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git master

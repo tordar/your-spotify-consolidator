@@ -217,6 +217,11 @@ class SpotifyRecentPlaysFetcher {
       `HAS_NEW_TRACKS=${hasNewTracks}\n`,
       'utf8'
     );
+    // GitHub Actions: set step output so the workflow can skip the merge job when false
+    const ghOut = process.env.GITHUB_OUTPUT;
+    if (ghOut) {
+      fs.appendFileSync(ghOut, `has_new_tracks=${hasNewTracks}\n`, 'utf8');
+    }
   }
 
   /**

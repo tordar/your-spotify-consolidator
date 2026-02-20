@@ -207,23 +207,38 @@ class SpotifyRecentPlaysFetcher {
     }
   }
 
+  private writeFetchResult(hasNewTracks: boolean): void {
+    const tempDir = 'temp';
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    fs.writeFileSync(
+      path.join(tempDir, 'fetch-result.txt'),
+      `HAS_NEW_TRACKS=${hasNewTracks}\n`,
+      'utf8'
+    );
+  }
+
   /**
    * Main: check for new tracks, then fetch and save recent plays if needed.
-   * Exits 1 when there are no new tracks (so CI can skip merge step).
+   * Always exits 0. Writes temp/fetch-result.txt with HAS_NEW_TRACKS=true|false for CI.
    */
-  async fetchAndSaveRecentPlays(): Promise<string> {
+  async fetchAndSaveRecentPlays(): Promise<string | null> {
     try {
       const shouldFetch = await this.hasNewTracks();
       if (!shouldFetch) {
-        process.exit(1);
+        this.writeFetchResult(false);
+        process.exit(0);
       }
       const recentPlays = await this.fetchRecentPlays();
       const filename = await this.saveRecentPlays(recentPlays);
+      this.writeFetchResult(true);
       console.log('🎉 Recent plays fetch completed successfully!');
       return filename;
     } catch (error) {
       console.error('💥 Recent plays fetch failed:', error);
-      process.exit(1);
+      this.writeFetchResult(false);
+      process.exit(0);
     }
   }
 }

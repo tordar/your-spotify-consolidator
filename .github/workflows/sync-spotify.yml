@@ -41,12 +41,21 @@ jobs:
           SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
         run: npm run fetch-recent-plays
 
+      - name: Set fetch result
+        id: fetch-result
+        run: |
+          if [ -f temp/fetch-result.txt ] && grep -q "HAS_NEW_TRACKS=true" temp/fetch-result.txt; then
+            echo "has_new_tracks=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_new_tracks=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Merge recent data with merged streaming history
-        if: steps.fetch-plays.outcome == 'success'
+        if: steps.fetch-result.outputs.has_new_tracks == 'true'
         run: npm run merge-recent-data
         
       - name: Generate cleaned and consolidated data files
-        if: steps.fetch-plays.outcome == 'success'
+        if: steps.fetch-result.outputs.has_new_tracks == 'true'
         env:
           SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
           SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
@@ -54,17 +63,17 @@ jobs:
         run: npm run generate-cleaned-files
         
       - name: Add podcast data to stats
-        if: steps.fetch-plays.outcome == 'success'
+        if: steps.fetch-result.outputs.has_new_tracks == 'true'
         run: npm run add-podcast-data
         
       - name: Pull latest changes
-        if: steps.fetch-plays.outcome == 'success'
+        if: steps.fetch-result.outputs.has_new_tracks == 'true'
         run: |
           git fetch origin master
           git pull --rebase origin master || git pull --no-edit origin master || echo "No remote changes to pull"
           
       - name: Commit changes
-        if: steps.fetch-plays.outcome == 'success'
+        if: steps.fetch-result.outputs.has_new_tracks == 'true'
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
@@ -78,6 +87,6 @@ jobs:
           git diff --staged --quiet || git commit -m "Spotify sync $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           
       - name: Push changes
-        if: steps.fetch-plays.outcome == 'success'
+        if: steps.fetch-result.outputs.has_new_tracks == 'true'
         run: |
           git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git master

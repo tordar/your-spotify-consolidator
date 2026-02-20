@@ -34,7 +34,6 @@
   "dependencies": {
     "@types/cli-progress": "^3.11.6",
     "@types/commander": "^2.12.0",
-    "@vercel/blob": "^2.0.0",
     "axios": "^1.12.2",
     "cli-progress": "^3.12.0",
     "commander": "^11.1.0",

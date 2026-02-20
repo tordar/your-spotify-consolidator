@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import { glob } from 'glob';
-import { uploadMultipleToVercelBlob, cleanupOldBlobFiles, deleteFromVercelBlob } from './vercel-blob-uploader';
 import type { CompleteListeningHistory, CompleteSong, CleanedSong, CleanedAlbum, CleanedArtist, AlbumWithSongs, DetailedStats, YearlyTopItems, TopSong, TopArtist } from './types';
 
 /**
@@ -181,7 +180,7 @@ export class FileOperations {
   }
 
   /**
-   * Save all cleaned files and upload to Vercel Blob Storage
+   * Save all cleaned files to disk
    */
   async saveCleanedFiles(
     songsResult: { songs: CleanedSong[], originalCount: number, consolidatedCount: number },
@@ -291,44 +290,6 @@ export class FileOperations {
     console.log(`- Detailed Stats: ${statsFile}`);
     console.log(`- All Artists Genres: ${allArtistsGenresFile}`);
 
-    const shouldUpload = process.env.UPLOAD_TO_VERCEL_BLOB !== 'false';
-    if (shouldUpload) {
-      // Check if token is available before attempting upload
-      if (!process.env.BLOB_READ_WRITE_TOKEN) {
-        console.log('\n⏭️  Skipping Vercel Blob Storage upload (BLOB_READ_WRITE_TOKEN not set)');
-        console.log('   Files are saved locally. Set BLOB_READ_WRITE_TOKEN to enable uploads, or set UPLOAD_TO_VERCEL_BLOB=false to suppress this message.');
-      } else {
-        try {
-          console.log('\n☁️  Uploading files to Vercel Blob Storage...');
-          await cleanupOldBlobFiles();
-          
-          const filesToUpload = [
-            { filePath: songsFile, blobPath: 'cleaned-songs.json' },
-            { filePath: artistsFile, blobPath: 'cleaned-artists.json' },
-            { filePath: albumsWithSongsFile, blobPath: 'cleaned-albums-with-songs.json' },
-            { filePath: statsFile, blobPath: 'detailed-stats.json' }
-          ];
-          
-          const blobUrls = await uploadMultipleToVercelBlob(filesToUpload);
-
-          console.log('\n✅ All files uploaded to Vercel Blob Storage:');
-          blobUrls.forEach((url, index) => {
-            const fileNames = ['Songs', 'Artists', 'Albums with Songs', 'Detailed Stats'];
-            console.log(`- ${fileNames[index]}: ${url}`);
-          });
-        } catch (error: any) {
-          const errorMessage = error?.message || String(error);
-          // Only show error if it's not about missing token (we already checked for that)
-          if (!errorMessage.includes('No token found')) {
-            console.error('\n⚠️  Failed to upload files to Vercel Blob Storage:', error);
-          }
-          console.log('   Files are still saved locally. Set UPLOAD_TO_VERCEL_BLOB=false to skip upload attempts.');
-        }
-      }
-    } else {
-      console.log('\n⏭️  Skipping Vercel Blob Storage upload (UPLOAD_TO_VERCEL_BLOB=false)');
-    }
-    
     return fileTimestamp;
   }
 

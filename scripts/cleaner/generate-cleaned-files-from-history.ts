@@ -2731,12 +2731,7 @@ class CleanedFilesGenerator {
       console.log(`- Generated ${artistsResult.artists.length} top artists (${artistsResult.originalCount} → ${artistsResult.consolidatedCount} consolidated)`);
       console.log(`- Total listening time: ${detailedStats.totalListeningHours.toLocaleString()} hours (${detailedStats.totalListeningDays.toLocaleString()} days)`);
       console.log(`- Processed ${history.metadata.totalListeningEvents.toLocaleString()} listening events`);
-      
-      const shouldUpload = process.env.UPLOAD_TO_VERCEL_BLOB !== 'false';
-      if (shouldUpload && process.env.BLOB_READ_WRITE_TOKEN) {
-        console.log(`- Uploaded to Vercel Blob: cleaned-songs.json, cleaned-artists.json, cleaned-albums-with-songs.json, detailed-stats.json`);
-      }
-      
+
     } catch (error) {
       console.error('💥 Failed to generate cleaned files:', error);
       process.exit(1);

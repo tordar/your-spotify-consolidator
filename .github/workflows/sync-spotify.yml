@@ -62,7 +62,6 @@ jobs:
           SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
           SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
           SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
-          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
         run: npm run generate-cleaned-files
         
       - name: Add podcast data to stats
@@ -86,14 +85,4 @@ jobs:
       - name: Push changes
         if: steps.check-tracks.outcome == 'success'
         run: |
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git master
-          
-      - name: Trigger Vercel deployment
-        if: steps.check-tracks.outcome == 'success'  # Only deploy if new tracks were processed
-        run: |
-          if [ -n "${{ secrets.VERCEL_DEPLOY_HOOK }}" ]; then
-            curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
-            echo "Vercel deployment triggered"
-          else
-            echo "No Vercel deploy hook configured"
-          fi
+          git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git master

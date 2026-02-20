@@ -178,31 +178,27 @@ export default function SettingsPage() {
               <div className="space-y-6">
                 <section>
                   <h3 className="flex items-center gap-2 font-semibold text-sm mb-2">
-                    <Trash2 className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
-                    1. Fork the repo
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    <a href="https://github.com/tordar/spotify-pulse/fork" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Fork the repository <ExternalLink className="w-3 h-3" /></a> to your own GitHub account so you have your own copy to push to and deploy from. The template does not include any personal data—data paths are in .gitignore, so your fork will have empty <code className="text-foreground/80">data/spotify-history/</code>, <code className="text-foreground/80">data/merged-streaming-history/</code>, and <code className="text-foreground/80">data/cleaned-data/</code> folders. Add your own export in the next step.
-                  </p>
-                  <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
-                    <li>When adding your data files, use <code className="text-foreground/80 bg-muted px-1 rounded">git add -f data/spotify-history/</code> to force-add (those paths are gitignored so the template stays clean for others).</li>
-                  </ul>
-                </section>
-
-                <section>
-                  <h3 className="flex items-center gap-2 font-semibold text-sm mb-2">
                     <FileJson className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
-                    2. Export extended streaming history from Spotify
+                    1. Request your data from Spotify
                   </h3>
                   <p className="text-sm text-muted-foreground mb-2">
-                    Request &quot;Extended streaming history&quot; from Spotify and place the exported files in the repo.
+                    Request &quot;Extended streaming history&quot; from Spotify.
                   </p>
                   <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
                     <li>Go to <a href="https://www.spotify.com/account/privacy/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Spotify Privacy Settings <ExternalLink className="w-3 h-3" /></a>.</li>
                     <li>Under &quot;Download your data&quot;, click <strong>Request data</strong> and select <strong>Extended streaming history</strong>.</li>
                     <li>Wait for the email (can take a few days), download the ZIP, and extract it.</li>
-                    <li>Put all <code className="text-foreground/80">Streaming_History_Audio_*.json</code> files into <code className="text-foreground/80">data/spotify-history/</code>.</li>
                   </ol>
+                </section>
+
+                <section>
+                  <h3 className="flex items-center gap-2 font-semibold text-sm mb-2">
+                    <Trash2 className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+                    2. Fork the repo and add your data
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    <a href="https://github.com/tordar/spotify-pulse/fork" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Fork the repository <ExternalLink className="w-3 h-3" /></a>. Put all <code className="text-foreground/80">Streaming_History_Audio_*.json</code> files into <code className="text-foreground/80">data/spotify-history/</code>.
+                  </p>
                 </section>
 
                 <section>
@@ -215,9 +211,9 @@ export default function SettingsPage() {
                   </p>
                   <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
                     <li>Create an app at <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Spotify Developer Dashboard <ExternalLink className="w-3 h-3" /></a>.</li>
-                    <li>Note <strong>Client ID</strong> and <strong>Client Secret</strong>, and set a redirect URI (e.g. <code className="text-foreground/80">http://localhost:3000/callback</code> or <code className="text-foreground/80">https://example.com/callback</code>).</li>
-                    <li>Get a refresh token: run <code className="text-foreground/80 bg-muted px-1 rounded">npm run setup-spotify-auth</code> in the project root; open the printed URL, authorize, then paste the <code className="text-foreground/80">code</code> from the redirect URL back into the script.</li>
-                    <li>Use the printed values (and the script&apos;s <code className="text-foreground/80">.env.local</code> output) for the next step.</li>
+                    <li>Note <strong>Client ID</strong> and <strong>Client Secret</strong>, and add this redirect URI in your app: <code className="text-foreground/80">http://127.0.0.1:3847/callback</code>.</li>
+                    <li>Get a refresh token: run <code className="text-foreground/80 bg-muted px-1 rounded">npm run setup-spotify-auth</code> in the project root. A browser tab opens—enter your Client ID and Client Secret there, then authorize with Spotify. Tokens are saved automatically.</li>
+                    <li>Use the printed values for the next step.</li>
                   </ol>
                 </section>
 
@@ -236,7 +232,6 @@ export default function SettingsPage() {
                   <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1 mb-2">
                     <li><strong>Required:</strong> <code className="text-foreground/80">SPOTIFY_CLIENT_ID</code>, <code className="text-foreground/80">SPOTIFY_CLIENT_SECRET</code>, <code className="text-foreground/80">SPOTIFY_REFRESH_TOKEN</code> (from step 3).</li>
                     <li><strong>Required for sync workflow push:</strong> <code className="text-foreground/80">PERSONAL_ACCESS_TOKEN</code> (GitHub PAT with <code className="text-foreground/80">repo</code> scope).</li>
-                    <li><strong>Optional:</strong> <code className="text-foreground/80">VERCEL_DEPLOY_HOOK</code> (trigger Vercel deploy after sync), <code className="text-foreground/80">BLOB_READ_WRITE_TOKEN</code> (if using blob upload in generate step).</li>
                   </ul>
                   <p className="text-sm text-muted-foreground">
                     Without <code className="text-foreground/80">PERSONAL_ACCESS_TOKEN</code>, the sync workflow cannot push; without Spotify secrets, sync and metadata enrichment will not work.
@@ -254,7 +249,7 @@ export default function SettingsPage() {
                   <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
                     <li><strong>Actions</strong> tab → ensure Actions are enabled for the repo.</li>
                     <li><strong>Initial merge:</strong> Pushing your <code className="text-foreground/80">Streaming_History_Audio_*.json</code> files to <code className="text-foreground/80">data/spotify-history/</code> triggers <strong>Merge Streaming History</strong>, which runs merge + generate + add-podcast-data and commits merged/cleaned data (Spotify secrets must be set for metadata).</li>
-                    <li><strong>Ongoing sync:</strong> <strong>Spotify Data Sync</strong> runs every 2 hours and on manual &quot;Trigger sync&quot;; it fetches recent plays, merges, regenerates cleaned data, commits and pushes, and optionally triggers Vercel via <code className="text-foreground/80">VERCEL_DEPLOY_HOOK</code>.</li>
+                    <li><strong>Ongoing sync:</strong> <strong>Spotify Data Sync</strong> runs every 2 hours; it fetches recent plays, merges, regenerates cleaned data, commits and pushes. Vercel redeploys automatically when the repo is updated.</li>
                   </ol>
                 </section>
 
@@ -268,9 +263,8 @@ export default function SettingsPage() {
                   </p>
                   <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
                     <li>In <a href="https://vercel.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Vercel <ExternalLink className="w-3 h-3" /></a>, <strong>Add New Project</strong> and import the GitHub repository.</li>
-                    <li><strong>Root Directory:</strong> Use the <strong>repository root</strong> (not <code className="text-foreground/80">web-app</code>), so the build and runtime can see <code className="text-foreground/80">data/</code>.</li>
-                    <li><strong>Environment variables</strong> (in Vercel project settings): <strong>Required for Spotify:</strong> <code className="text-foreground/80">SPOTIFY_CLIENT_ID</code>, <code className="text-foreground/80">SPOTIFY_CLIENT_SECRET</code>, <code className="text-foreground/80">SPOTIFY_REFRESH_TOKEN</code>. <strong>Optional (Settings page):</strong> <code className="text-foreground/80">GITHUB_TOKEN</code>, <code className="text-foreground/80">GITHUB_REPO_OWNER</code>, <code className="text-foreground/80">GITHUB_REPO_NAME</code> for &quot;Trigger sync&quot; and sync status.</li>
-                    <li>Deploy. To have each sync update the live site, add the <strong>Vercel Deploy Hook</strong> URL as the <code className="text-foreground/80">VERCEL_DEPLOY_HOOK</code> repository secret (see step 4).</li>
+                    <li><strong>Environment variables</strong> (in Vercel project settings): <strong>Required for Spotify:</strong> <code className="text-foreground/80">SPOTIFY_CLIENT_ID</code>, <code className="text-foreground/80">SPOTIFY_CLIENT_SECRET</code>, <code className="text-foreground/80">SPOTIFY_REFRESH_TOKEN</code>. <strong>Optional (Settings page):</strong> <code className="text-foreground/80">GITHUB_TOKEN</code>, <code className="text-foreground/80">GITHUB_REPO_OWNER</code>, <code className="text-foreground/80">GITHUB_REPO_NAME</code> for sync status.</li>
+                    <li>Deploy. The live site updates automatically when Actions push new data to the repo.</li>
                   </ol>
                 </section>
               </div>

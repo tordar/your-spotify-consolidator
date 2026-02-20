@@ -12,7 +12,7 @@ Your Spotify listening: historic, current, and daily. Process and visualize your
 - **Albums with details** – Explore albums with track-by-track breakdowns
 - **Genres** – Network graph of genre co-occurrence and top artists per genre
 - **Now Playing (Mini Player)** – Live playback state from your Spotify account (when authorized)
-- **Settings** – Recently played preview, sync status (last GitHub Actions run), and manual “Trigger sync” to run the sync workflow
+- **Settings** – Recently played preview, sync status (last GitHub Actions run)
 - **Rich metadata** – Album art, artist images, and genres via Spotify API (with MusicBrainz fallback for genres)
 - **Automatic syncing** – GitHub Actions fetches recent plays every 2 hours and regenerates data
 - **Podcast awareness** – Podcast listening is merged into stats and shown separately in yearly charts (via `add-podcast-data`)
@@ -129,7 +129,7 @@ npm run web:start
 
 ### Step 6: Set Up Automatic Syncing (Optional)
 
-The GitHub Action runs every 2 hours and can fetch recent plays, merge data, regenerate cleaned files, add podcast data, commit and push, and optionally trigger a Vercel deploy.
+The GitHub Action runs every 2 hours and can fetch recent plays, merge data, regenerate cleaned files, add podcast data, commit and push. Vercel redeploys automatically when the repo is updated.
 
 1. **GitHub Secrets** (Settings → Secrets and variables → Actions):
 
@@ -138,17 +138,13 @@ The GitHub Action runs every 2 hours and can fetch recent plays, merge data, reg
    | `SPOTIFY_CLIENT_ID` | Spotify app Client ID |
    | `SPOTIFY_CLIENT_SECRET` | Spotify app Client Secret |
    | `SPOTIFY_REFRESH_TOKEN` | From `npm run setup-spotify-auth` |
-   | `PERSONAL_ACCESS_TOKEN` | GitHub PAT with `repo` (and optionally `actions:write` for trigger-sync) |
+   | `PERSONAL_ACCESS_TOKEN` | GitHub PAT with `repo` |
 
 2. Enable Actions in the **Actions** tab.
 
 **What runs automatically**
 
-- Every 2 hours: check for new tracks, fetch recent plays, merge with existing history, run `generate-cleaned-files`, run `add-podcast-data`, commit and push, optionally trigger Vercel deploy.
-
-**Manual sync from the app**
-
-- On the **Settings** page, use **Trigger sync** to run the workflow via `workflow_dispatch`. For this to work, the app needs `GITHUB_TOKEN` (or a PAT with `actions:write`) and repo info (`GITHUB_REPO_OWNER` / `GITHUB_REPO_NAME`, or Vercel’s `VERCEL_GIT_REPO_OWNER` / `VERCEL_GIT_REPO_SLUG`).
+- Every 2 hours: check for new tracks, fetch recent plays, merge with existing history, run `generate-cleaned-files`, run `add-podcast-data`, commit and push. Vercel redeploys when the repo is updated.
 
 ## Web App Overview
 
@@ -159,7 +155,7 @@ The GitHub Action runs every 2 hours and can fetch recent plays, merge data, reg
 | **Top Albums** | Searchable albums with play counts |
 | **Top Artists** | Searchable artists with play counts |
 | **Genres** | Genre co-occurrence network and top artists per genre |
-| **Settings** | Recently played, last sync status, trigger sync |
+| **Settings** | Recently played, last sync status |
 
 The app also includes a **Mini Player** (when playback state is available) that shows the current track and progress.
 
@@ -208,7 +204,6 @@ spotify-pulse/
 │   │   └── api/
 │   │       ├── data/             # stats, songs, albums, artists, albums-with-songs, genres, daily-listening
 │   │       ├── spotify/         # recently-played, playback-state
-│   │       ├── trigger-sync/
 │   │       └── sync-status/
 │   └── components/               # MiniPlayer, PlaybackContext, Heatmap, SpotifyStatsLayout, etc.
 ├── .github/workflows/
@@ -241,8 +236,8 @@ After `add-podcast-data`, `detailed-stats-*.json` also includes podcast listenin
 | `SPOTIFY_CLIENT_ID` | Spotify app Client ID | Yes (for sync / metadata / Now Playing) | Scripts, web app API, GitHub Actions |
 | `SPOTIFY_CLIENT_SECRET` | Spotify app Client Secret | Yes (for sync / metadata) | Scripts, GitHub Actions |
 | `SPOTIFY_REFRESH_TOKEN` | Spotify refresh token | Yes (for sync / metadata) | Scripts, GitHub Actions |
-| `GITHUB_TOKEN` | GitHub token (e.g. Actions token or PAT) | No (for Settings sync/trigger) | Web app (sync-status, trigger-sync) |
-| `GITHUB_REPO_OWNER` / `GITHUB_REPO_NAME` | Repo for workflow API calls | No (or use Vercel’s `VERCEL_GIT_REPO_OWNER` / `VERCEL_GIT_REPO_SLUG`) | Web app (sync-status, trigger-sync) |
+| `GITHUB_TOKEN` | GitHub token (e.g. Actions token or PAT) | No (for Settings sync status) | Web app (sync-status) |
+| `GITHUB_REPO_OWNER` / `GITHUB_REPO_NAME` | Repo for workflow API calls | No (or use Vercel’s `VERCEL_GIT_REPO_OWNER` / `VERCEL_GIT_REPO_SLUG`) | Web app (sync-status) |
 
 For GitHub Actions, set Spotify credentials as **repository secrets**. Without Spotify credentials you can still process exported history; automatic sync and metadata enrichment will not work.
 
@@ -273,11 +268,6 @@ For GitHub Actions, set Spotify credentials as **repository secrets**. Without S
 - Ensure repository secrets: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REFRESH_TOKEN`, `PERSONAL_ACCESS_TOKEN`.
 - In the Actions tab, check the latest workflow run logs.
 - Re-run `npm run setup-spotify-auth` if the refresh token may have been revoked.
-
-**Trigger sync (Settings) fails**
-
-- Set `GITHUB_TOKEN` (or a PAT with `actions:write`) and repo owner/name (or rely on Vercel’s `VERCEL_GIT_REPO_OWNER` / `VERCEL_GIT_REPO_SLUG`).
-- Ensure the workflow file is `.github/workflows/sync-spotify.yml` and has `workflow_dispatch`.
 
 ## License
 

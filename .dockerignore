@@ -1,0 +1,30 @@
+# Dependencies and build
+node_modules
+web-app/node_modules
+web-app/.next
+.next
+
+# Data (mount at runtime instead)
+data/
+
+# Git and env
+.git
+.env
+.env.*
+!.env.example
+
+# IDE and OS
+.idea
+.vscode
+*.log
+.DS_Store
+
+# Tests and docs
+**/*.test.*
+**/*.spec.*
+docs/
+*.md
+!README.md
+
+# GitHub Actions (not needed in image)
+.github

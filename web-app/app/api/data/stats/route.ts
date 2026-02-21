@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { readdir, readFile } from 'fs/promises'
 import { join } from 'path'
+import { getCleanedDataDir } from '@/lib/data-dir'
 import { getRecentlyPlayed } from '@/lib/spotify-recently-played'
 
 const MS_PER_HOUR = 60 * 60 * 1000
@@ -8,7 +9,7 @@ const MS_PER_DAY = 24 * MS_PER_HOUR
 
 export async function GET() {
   try {
-    const dataDir = join(process.cwd(), '../data/cleaned-data')
+    const dataDir = getCleanedDataDir()
     const files = await readdir(dataDir)
     const statsFile = files
       .filter(f => f.startsWith('detailed-stats-') && f.endsWith('.json'))

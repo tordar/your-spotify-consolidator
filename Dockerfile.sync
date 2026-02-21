@@ -1,0 +1,16 @@
+# Sync worker: runs fetch-recent-plays → merge → generate-cleaned-files → add-podcast-data on a schedule.
+# Expects ./data mounted at /app/data (same volume as web app).
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY scripts ./scripts
+COPY docker-sync.sh ./
+RUN chmod +x docker-sync.sh
+
+# Run sync every 2 hours (match GitHub Actions schedule)
+ENV SYNC_INTERVAL_SECONDS=7200
+CMD ["sh", "-c", "while true; do ./docker-sync.sh; echo \"Sleeping ${SYNC_INTERVAL_SECONDS}s...\"; sleep ${SYNC_INTERVAL_SECONDS}; done"]

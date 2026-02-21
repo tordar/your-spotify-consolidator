@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { readdir, readFile } from 'fs/promises'
 import { join } from 'path'
-import { existsSync } from 'fs'
+import { getMergedHistoryDir } from '@/lib/data-dir'
 import { getRecentlyPlayed } from '@/lib/spotify-recently-played'
 
 interface ListeningEvent {
@@ -34,14 +34,6 @@ interface DayPlay {
 interface DayRecord {
   totalMs: number
   plays: DayPlay[]
-}
-
-function getMergedHistoryDir(): string {
-  const fromWebApp = join(process.cwd(), '../data/merged-streaming-history')
-  const fromRepoRoot = join(process.cwd(), 'data/merged-streaming-history')
-  if (existsSync(fromWebApp)) return fromWebApp
-  if (existsSync(fromRepoRoot)) return fromRepoRoot
-  return fromWebApp
 }
 
 /**

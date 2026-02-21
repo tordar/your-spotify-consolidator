@@ -1,0 +1,30 @@
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DATA_DIR: /data
+      # Pass through from .env (do not commit secrets)
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID} 
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET}
+      SPOTIFY_REFRESH_TOKEN: ${SPOTIFY_REFRESH_TOKEN}
+      UPLOAD_SECRET: ${UPLOAD_SECRET}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      GITHUB_REPO_OWNER: ${GITHUB_REPO_OWNER}
+      GITHUB_REPO_NAME: ${GITHUB_REPO_NAME}
+    volumes:
+      # Mount your data dir so the app can read cleaned-data and merged-streaming-history
+      - ./data:/data
+    restart: unless-stopped
+
+  sync:
+    build:
+      context: .
+      dockerfile: Dockerfile.sync
+    env_file: .env
+    volumes:
+      # Same data dir as web: sync writes merged-streaming-history + cleaned-data here
+      - ./data:/app/data
+    restart: unless-stopped

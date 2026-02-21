@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { readdir, readFile } from 'fs/promises'
 import { join } from 'path'
+import { getCleanedDataDir } from '@/lib/data-dir'
 
 export async function GET() {
   try {
-    const dataDir = join(process.cwd(), '../data/cleaned-data')
+    const dataDir = getCleanedDataDir()
     const files = await readdir(dataDir)
     const albumFile = files
       .filter(f => f.startsWith('cleaned-albums-') && f.endsWith('.json') && !f.includes('with-songs'))

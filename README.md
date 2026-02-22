@@ -44,6 +44,7 @@ You already have this from [Getting Your Data](#getting-your-spotify-data): requ
 1. [Fork the repository](https://github.com/tordar/spotify-pulse/fork) (or clone if you prefer: `git clone https://github.com/YOUR_USERNAME/spotify-pulse.git`).
 2. In [Vercel](https://vercel.com), **Add New Project** and import your forked GitHub repo.
 3. Deploy. The app will be live but without data until you complete the steps below.
+4. In Vercel (Project → Settings → Environment Variables), add **SPOTIFY_OAUTH_STATE_SECRET** with any random string (e.g. run `openssl rand -hex 32`). This is required for the “Authorize with Spotify” button in Settings (step 3). Redeploy if the app was already live.
 
 For local development instead:
 
@@ -54,13 +55,16 @@ cd web-app && npm install && cd ..
 npm run web:dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000) (use 127.0.0.1 so the Spotify redirect URI matches).
 
 ### Step 3: Set up your Spotify Developer application
 
 1. Create an app at [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
-2. Note **Client ID** and **Client Secret**. Add redirect URI: `http://127.0.0.1:3847/callback`.
-3. Get a refresh token: in the project root run `npm run setup-spotify-auth` (a browser tab opens to authorize). Use the printed values in the next step.
+2. Note **Client ID** and **Client Secret**. In your Spotify app, go to **Settings** → **Redirect URIs** and add the exact URL(s) you will use:
+   - **Production:** your live app URL, e.g. `https://your-app.vercel.app/callback` or `https://pulse.example.com/callback`
+   - **Local dev:** `http://127.0.0.1:3000/callback` (use **127.0.0.1**, not localhost—Spotify often rejects localhost)
+3. Get a refresh token: open your deployed app → **Settings**, enter Client ID and Client Secret in the Spotify section, then click **Authorize with Spotify**. You’ll be sent to Spotify to authorize, then back to the app to copy the refresh token. Add that token plus Client ID and Client Secret in the next step.
+4. (Optional) If you prefer not to set SPOTIFY_OAUTH_STATE_SECRET (step 2), get a refresh token locally: run `npm run setup-spotify-auth` in the project root (add redirect URI `http://127.0.0.1:3847/callback` in your Spotify app) and use the printed values.
 
 ### Step 4: Add secrets and enable GitHub Actions
 
@@ -72,7 +76,7 @@ Add the same credentials in two places: **GitHub** (for Actions) and **Vercel** 
 |--------|-------------|
 | `SPOTIFY_CLIENT_ID` | Spotify app Client ID |
 | `SPOTIFY_CLIENT_SECRET` | Spotify app Client Secret |
-| `SPOTIFY_REFRESH_TOKEN` | From `npm run setup-spotify-auth` |
+| `SPOTIFY_REFRESH_TOKEN` | From in-app Settings (Authorize with Spotify) or `npm run setup-spotify-auth` |
 | `PERSONAL_ACCESS_TOKEN` | GitHub PAT with `repo` (for workflows to push) |
 
 **Vercel** (Project → Settings → Environment Variables):
@@ -207,11 +211,12 @@ After `add-podcast-data`, `detailed-stats-*.json` also includes podcast listenin
 | `SPOTIFY_CLIENT_ID` | Spotify app Client ID | Yes (for sync / metadata / Now Playing) | Scripts, web app API, GitHub Actions |
 | `SPOTIFY_CLIENT_SECRET` | Spotify app Client Secret | Yes (for sync / metadata) | Scripts, GitHub Actions |
 | `SPOTIFY_REFRESH_TOKEN` | Spotify refresh token | Yes (for sync / metadata) | Scripts, GitHub Actions |
+| `SPOTIFY_OAUTH_STATE_SECRET` | Random secret used to encrypt the temporary Spotify OAuth cookie (e.g. `openssl rand -hex 32`) | Only for in-app “Authorize with Spotify” in Settings | Web app (spotify-auth start + callback) |
 | `GITHUB_TOKEN` | GitHub PAT with `repo` or `contents: write` | Yes (for Settings sync status and in-app upload) | Web app (sync-status, upload-history) |
 | `GITHUB_REPO_OWNER` / `GITHUB_REPO_NAME` | Repo owner and name | No (Vercel sets these when you connect the repo) | Web app (sync-status, upload-history) |
 | `UPLOAD_SECRET` | Secret you enter in Settings to authorize uploads (only you should know it) | Yes (for in-app upload) | Web app (upload-history) |
 
-For **GitHub Actions**, set Spotify credentials and `PERSONAL_ACCESS_TOKEN` as **repository secrets**. For the **Vercel** app, set the same Spotify vars plus `GITHUB_TOKEN` and `UPLOAD_SECRET` so the Settings page and in-app upload work. Without Spotify credentials you can still process exported history; automatic sync and metadata enrichment will not work.
+For **GitHub Actions**, set Spotify credentials and `PERSONAL_ACCESS_TOKEN` as **repository secrets**. For the **Vercel** app, set the same Spotify vars plus `GITHUB_TOKEN` and `UPLOAD_SECRET` so the Settings page and in-app upload work. To use the in-app “Authorize with Spotify” form, add **SPOTIFY_OAUTH_STATE_SECRET** in Vercel first (any random string); then you can get the refresh token in Settings. Without it, use `npm run setup-spotify-auth` locally to get the token. Without Spotify credentials you can still process exported history; automatic sync and metadata enrichment will not work.
 
 ## Troubleshooting
 

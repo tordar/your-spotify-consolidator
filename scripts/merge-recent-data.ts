@@ -380,9 +380,9 @@ class DataMerger {
       // Find latest recent plays file
       const recentPlaysFile = this.findLatestRecentPlaysFile();
       if (!recentPlaysFile) {
-        console.log('⚠️  No recent-plays files found');
-        console.log('⚠️  No recent plays data to merge');
-        return;
+        console.error('❌ No recent-plays files found');
+        console.error('❌ No recent plays data to merge');
+        process.exit(1);
       }
 
       console.log(`📁 Loading recent plays from: ${recentPlaysFile}`);
@@ -391,9 +391,9 @@ class DataMerger {
       // Find latest merged file
       const existingDataFile = this.findLatestMergedFile();
       if (!existingDataFile) {
-        console.log('❌ No existing merged data found');
-        console.log('❌ Cannot merge without existing data');
-        return;
+        console.error('❌ No existing merged data found');
+        console.error('❌ Cannot merge without existing data (run merge-streaming-history first or ensure repo has merged file)');
+        process.exit(1);
       }
 
       console.log(`📁 Loading existing data from: ${existingDataFile}`);

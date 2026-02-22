@@ -1,4 +1,5 @@
 # Spotify Data Sync – runs on schedule and workflow_dispatch
+# Flow: fetch recent plays → merge into merged-streaming-history (from repo) → generate cleaned files → commit and push
 name: Spotify Data Sync
 
 on:
@@ -61,10 +62,13 @@ jobs:
           name: recent-plays
           path: temp/temp-recent-plays-*.json
 
-  merge-data:
+  # Single job: use repo's merged-streaming-history, merge temp-recent-plays into it, generate cleaned files, commit and push
+  merge-generate-and-push:
     needs: fetch-check
     if: needs.fetch-check.outputs.has_new_tracks == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -79,6 +83,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Pull latest changes
+        run: |
+          git fetch origin master
+          git pull --rebase origin master || git pull --no-edit origin master || echo "No remote changes to pull"
 
       - name: Download recent plays
         uses: actions/download-artifact@v4
@@ -89,44 +98,11 @@ jobs:
         run: |
           mkdir -p temp
           mv temp-recent-plays-*.json temp/ 2>/dev/null || true
+          echo "Recent plays in temp:"
+          ls -la temp/ 2>/dev/null || true
 
-      - name: Pull latest changes
-        run: |
-          git fetch origin master
-          git pull --rebase origin master || git pull --no-edit origin master || echo "No remote changes to pull"
-
-      - name: Merge recent data with merged streaming history
+      - name: Merge recent plays into merged streaming history
         run: npm run merge-recent-data
-
-      - name: Upload merged data
-        uses: actions/upload-artifact@v4
-        with:
-          name: merged-data
-          path: data/merged-streaming-history/
-
-  generate-files:
-    needs: [fetch-check, merge-data]
-    if: needs.fetch-check.outputs.has_new_tracks == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Download merged data
-        uses: actions/download-artifact@v4
-        with:
-          name: merged-data
 
       - name: Generate cleaned and consolidated data files
         env:
@@ -138,75 +114,21 @@ jobs:
       - name: Add podcast data to stats
         run: npm run add-podcast-data
 
-      - name: Upload data for commit
-        uses: actions/upload-artifact@v4
-        with:
-          name: sync-data
-          path: |
-            data/merged-streaming-history/
-            data/cleaned-data/
-
-  commit-and-push:
-    needs: [fetch-check, generate-files]
-    if: needs.fetch-check.outputs.has_new_tracks == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-
-      - name: Pull latest changes
-        run: |
-          git fetch origin master
-          git pull --rebase origin master || git pull --no-edit origin master || echo "No remote changes to pull"
-
-      # Remove so we replace with artifact only (no old + new duplicates)
-      - name: Clear data dirs for artifact
-        run: |
-          rm -rf data/merged-streaming-history data/cleaned-data
-          mkdir -p data/merged-streaming-history data/cleaned-data
-
-      - name: Download sync data
-        uses: actions/download-artifact@v4
-        with:
-          name: sync-data
-
-      # If artifact was extracted to workspace root, move into data/ (otherwise it's already under data/)
-      - name: Place artifact into data directory
-        run: |
-          if [ -d merged-streaming-history ]; then
-            cp -r merged-streaming-history/* data/merged-streaming-history/ 2>/dev/null || true
-            rm -rf merged-streaming-history
-          fi
-          if [ -d cleaned-data ]; then
-            cp -r cleaned-data/* data/cleaned-data/ 2>/dev/null || true
-            rm -rf cleaned-data
-          fi
-          echo "Contents of data/merged-streaming-history:"
-          ls -la data/merged-streaming-history/ 2>/dev/null || true
-          echo "Contents of data/cleaned-data:"
-          ls -la data/cleaned-data/ 2>/dev/null || true
-
-      - name: Commit changes
+      - name: Commit and push
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           MERGED_COUNT=$(ls -1 data/merged-streaming-history/merged-streaming-history-*.json 2>/dev/null | wc -l)
           if [ "$MERGED_COUNT" -eq 0 ]; then
-            echo "::error::No merged-streaming-history file found; skipping commit"
+            echo "::error::No merged-streaming-history file after merge (repo must contain data/merged-streaming-history/*.json, e.g. from merge-streaming-history workflow)"
+            ls -la data/merged-streaming-history/ 2>/dev/null || true
             exit 1
           fi
-          git add -f data/merged-streaming-history/ data/cleaned-data/
+          git add -A -f data/merged-streaming-history/ data/cleaned-data/
           if git diff --staged --quiet; then
-            echo "::error::No changes to commit (artifact may have been in wrong location or identical to repo)"
+            echo "No changes to commit (no new plays or identical data)"
             git status
-            exit 1
+            exit 0
           fi
           git commit -m "Spotify sync $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-
-      - name: Push changes
-        run: |
           git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git master

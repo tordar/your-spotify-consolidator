@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { NextRequest, NextResponse } from 'next/server'
 
-const RULES_REPO_PATH = 'scripts/cleaner/utils/album-consolidation-rules.json'
+const RULES_REPO_PATH = 'data/album-consolidation-rules.json'
 
 interface ConsolidationRule {
   artistName: string
@@ -18,10 +18,10 @@ interface RulesBody {
 function getRepoRoot(): string {
   const fromWebApp = join(process.cwd(), '..')
   const fromRepoRoot = process.cwd()
-  if (existsSync(join(fromWebApp, 'scripts', 'cleaner', 'utils', 'album-consolidation-rules.json'))) {
+  if (existsSync(join(fromWebApp, 'data', 'album-consolidation-rules.json'))) {
     return fromWebApp
   }
-  if (existsSync(join(fromRepoRoot, 'scripts', 'cleaner', 'utils', 'album-consolidation-rules.json'))) {
+  if (existsSync(join(fromRepoRoot, 'data', 'album-consolidation-rules.json'))) {
     return fromRepoRoot
   }
   return fromWebApp

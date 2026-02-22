@@ -84,7 +84,7 @@ Add the same credentials in two places: **GitHub** (for Actions) and **Vercel** 
 - **Required:** `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REFRESH_TOKEN` (Now Playing, recently played).
 - **Required for Settings and upload:** `GITHUB_TOKEN` (same PAT with `repo` or `contents: write`) and `UPLOAD_SECRET` (a secret only you know; you enter it in the Settings upload form to authorize uploads). Repo owner/name are read from Vercel’s connection to your repo; you don’t need to set them.
 
-Then enable **Actions** in the repo’s **Actions** tab. Workflows are already in the repo; they run on push to `data/spotify-history/` (merge + generate) and on a schedule (sync recent plays every 2 hours).
+Then enable **Actions** in the repo’s **Actions** tab. Workflows are already in the repo; they run on push to `data/spotify-history/` (merge + generate), on a schedule (sync recent plays every 2 hours), and **Sync upstream** (manual only) to pull the latest code from the original repo.
 
 ### Step 5: Upload your data in the app
 
@@ -93,6 +93,26 @@ Then enable **Actions** in the repo’s **Actions** tab. Workflows are already i
 3. The **Merge Streaming History** workflow runs automatically on that push: it merges files, runs `generate-cleaned-files` and `add-podcast-data`, then commits merged and cleaned data. Vercel redeploys and your dashboard will show your stats.
 
 Alternatively, you can add the files manually: put `Streaming_History_Audio_*.json` into `data/spotify-history/` in your repo and push; the same workflow will run.
+
+### Staying up to date with upstream
+
+Your fork will get ahead (sync commits with your data) and behind (new features in the original repo). To pull in updates while keeping your data:
+
+1. **One-time:** Add the original repo as `upstream`:
+   ```bash
+   git remote add upstream https://github.com/tordar/spotify-pulse.git
+   ```
+2. **When you want new features:** Fetch and merge upstream, then push to your fork:
+   ```bash
+   git fetch upstream
+   git merge upstream/master
+   git push origin master
+   ```
+   (Or use `git pull upstream master` instead of fetch + merge.)
+
+Your **data is safe**: the upstream repo does not contain `data/merged-streaming-history/` or `data/cleaned-data/`, so merging only adds or updates code. If you get merge conflicts, they will be in code (e.g. `package.json`, workflows, app files); resolve them locally and push.
+
+You can also run the **Sync upstream** workflow from the Actions tab (manual trigger) to pull the latest code from upstream and push to your fork; if the merge has conflicts, the workflow fails and you resolve locally.
 
 ---
 
@@ -183,7 +203,8 @@ spotify-pulse/
 │   └── components/               # MiniPlayer, PlaybackContext, Heatmap, SpotifyStatsLayout, etc.
 ├── .github/workflows/
 │   ├── sync-spotify.yml          # Scheduled + manual sync
-│   └── merge-streaming-history.yml
+│   ├── merge-streaming-history.yml
+│   └── sync-upstream.yml         # Pull latest code from upstream (manual)
 └── README.md
 ```
 

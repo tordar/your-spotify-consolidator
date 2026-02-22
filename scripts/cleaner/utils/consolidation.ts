@@ -34,8 +34,8 @@ export class ConsolidationRulesManager {
     const rulesMap = new Map<string, string>();
     
     try {
-      // Path relative to this file's directory (both files are in scripts/cleaner/utils/)
-      const rulesPath = path.join(__dirname, 'album-consolidation-rules.json');
+      // Path relative to repo root (scripts run with cwd = repo root; data/ holds user-specific rules)
+      const rulesPath = path.join(process.cwd(), 'data', 'album-consolidation-rules.json');
       if (fs.existsSync(rulesPath)) {
         const rulesData = JSON.parse(fs.readFileSync(rulesPath, 'utf8')) as ConsolidationRules;
         this.consolidationRulesData = rulesData;
@@ -56,7 +56,7 @@ export class ConsolidationRulesManager {
         
         console.log(`📋 Loaded ${rulesData.rules.length} consolidation rules`);
       } else {
-        console.log('ℹ️  No consolidation rules file found (scripts/cleaner/utils/album-consolidation-rules.json)');
+        console.log('ℹ️  No consolidation rules file found (data/album-consolidation-rules.json)');
       }
     } catch (error) {
       console.error('⚠️  Failed to load consolidation rules:', error);

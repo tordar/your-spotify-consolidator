@@ -1,0 +1,35 @@
+# Sync upstream – pull latest code from the original repo into your fork
+# Trigger manually (Actions → Sync upstream → Run workflow). Pushes to your fork (origin).
+# If merge has conflicts, the job fails: resolve locally and push.
+name: Sync upstream
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync-upstream:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          fetch-depth: 0
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/tordar/spotify-pulse.git 2>/dev/null || true
+          git fetch upstream
+
+      - name: Merge upstream into master
+        run: |
+          if ! git merge upstream/master --no-edit; then
+            echo "::error::Merge from upstream failed due to conflicts. Pull upstream locally, resolve conflicts, and push."
+            exit 1
+          fi
+
+      - name: Push to origin
+        run: |
+          git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ github.repository }}.git master

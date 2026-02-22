@@ -158,15 +158,37 @@ jobs:
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
+      - name: Pull latest changes
+        run: |
+          git fetch origin master
+          git pull --rebase origin master || git pull --no-edit origin master || echo "No remote changes to pull"
+
+      # Remove so we replace with artifact only (no old + new duplicates)
+      - name: Clear data dirs for artifact
+        run: |
+          rm -rf data/merged-streaming-history data/cleaned-data
+          mkdir -p data/merged-streaming-history data/cleaned-data
+
       - name: Download sync data
         uses: actions/download-artifact@v4
         with:
           name: sync-data
 
-      - name: Pull latest changes
+      # If artifact was extracted to workspace root, move into data/ (otherwise it's already under data/)
+      - name: Place artifact into data directory
         run: |
-          git fetch origin master
-          git pull --rebase origin master || git pull --no-edit origin master || echo "No remote changes to pull"
+          if [ -d merged-streaming-history ]; then
+            cp -r merged-streaming-history/* data/merged-streaming-history/ 2>/dev/null || true
+            rm -rf merged-streaming-history
+          fi
+          if [ -d cleaned-data ]; then
+            cp -r cleaned-data/* data/cleaned-data/ 2>/dev/null || true
+            rm -rf cleaned-data
+          fi
+          echo "Contents of data/merged-streaming-history:"
+          ls -la data/merged-streaming-history/ 2>/dev/null || true
+          echo "Contents of data/cleaned-data:"
+          ls -la data/cleaned-data/ 2>/dev/null || true
 
       - name: Commit changes
         run: |
@@ -178,7 +200,12 @@ jobs:
             exit 1
           fi
           git add -f data/merged-streaming-history/ data/cleaned-data/
-          git diff --staged --quiet || git commit -m "Spotify sync $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          if git diff --staged --quiet; then
+            echo "::error::No changes to commit (artifact may have been in wrong location or identical to repo)"
+            git status
+            exit 1
+          fi
+          git commit -m "Spotify sync $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 
       - name: Push changes
         run: |

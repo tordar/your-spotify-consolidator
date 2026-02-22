@@ -787,6 +787,32 @@ class CleanedFilesGenerator {
   }
 
   /**
+   * Build raw album variations by artist (no consolidation) for Settings UI.
+   * One pass over history.songs: aggregate play count per (artist, album name).
+   */
+  private buildAlbumVariationsByArtist(history: CompleteListeningHistory): Record<string, { albumName: string; count: number }[]> {
+    const byArtist = new Map<string, Map<string, number>>();
+    history.songs.forEach(song => {
+      const albumName = (song.album?.name || '').trim();
+      if (!albumName) return;
+      const artistName = (song.artists?.[0] || song.artist?.name || 'Unknown Artist').trim();
+      if (!byArtist.has(artistName)) {
+        byArtist.set(artistName, new Map());
+      }
+      const albumCounts = byArtist.get(artistName)!;
+      albumCounts.set(albumName, (albumCounts.get(albumName) || 0) + (song.playCount || 0));
+    });
+    const result: Record<string, { albumName: string; count: number }[]> = {};
+    byArtist.forEach((albumCounts, artistName) => {
+      const list = Array.from(albumCounts.entries())
+        .map(([albumName, count]) => ({ albumName, count }))
+        .sort((a, b) => b.count - a.count);
+      result[artistName] = list;
+    });
+    return result;
+  }
+
+  /**
    * Generate albums with songs from complete history
    */
   private generateAlbumsWithSongs(history: CompleteListeningHistory): { albums: AlbumWithSongs[], originalCount: number } {
@@ -2720,7 +2746,8 @@ class CleanedFilesGenerator {
         allArtistsGenres = allArtistsGenresWithSongIds.map(({ songId, ...rest }) => rest);
       }
       
-      const timestamp = await this.fileOps.saveCleanedFiles(songsResult, artistsResult, albumsWithSongsResult.albums, albumsWithSongsResult.originalCount, history, detailedStats, allArtistsGenres);
+      const albumVariationsByArtist = this.buildAlbumVariationsByArtist(history);
+      const timestamp = await this.fileOps.saveCleanedFiles(songsResult, artistsResult, albumsWithSongsResult.albums, albumsWithSongsResult.originalCount, history, detailedStats, allArtistsGenres, undefined, albumVariationsByArtist);
       
       console.log('');
       console.log('🎉 All cleaned files generated successfully!');

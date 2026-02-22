@@ -162,7 +162,8 @@ export class FileOperations {
         /^cleaned-artists-\d+\.json$/,
         /^cleaned-albums-with-songs-\d+\.json$/,
         /^detailed-stats-\d+\.json$/,
-        /^all-artists-genres-\d+\.json$/
+        /^all-artists-genres-\d+\.json$/,
+        /^album-variations-by-artist-\d+\.json$/
       ];
 
       let deletedCount = 0;
@@ -190,7 +191,8 @@ export class FileOperations {
     history: CompleteListeningHistory,
     detailedStats: DetailedStats,
     allArtistsGenres: Array<{ name: string; play_count: number; genres: string[] }>,
-    timestamp?: number
+    timestamp?: number,
+    albumVariationsByArtist?: Record<string, { albumName: string; count: number }[]>
   ): Promise<number> {
     if (!fs.existsSync('data/cleaned-data')) {
       fs.mkdirSync('data/cleaned-data', { recursive: true });
@@ -263,6 +265,12 @@ export class FileOperations {
       },
       artists: allArtistsGenres
     }, null, 2));
+
+    if (albumVariationsByArtist && Object.keys(albumVariationsByArtist).length > 0) {
+      const albumVariationsFile = `data/cleaned-data/album-variations-by-artist-${fileTimestamp}.json`;
+      fs.writeFileSync(albumVariationsFile, JSON.stringify(albumVariationsByArtist, null, 2));
+      console.log(`- Album variations by artist: ${albumVariationsFile}`);
+    }
     
     // Verify detailed stats file
     let songsWithImages = 0;

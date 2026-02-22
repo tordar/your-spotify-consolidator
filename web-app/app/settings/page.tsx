@@ -1,9 +1,34 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, Fragment } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import SpotifyStatsLayout from '@/components/SpotifyStatsLayout'
-import { Clock, CheckCircle2, XCircle, Loader2, ExternalLink, Music2, Trash2, FileJson, Key, Github, Zap, Cloud, ChevronDown, ChevronUp, Upload } from 'lucide-react'
+import { Clock, CheckCircle2, XCircle, Loader2, ExternalLink, Music2, Trash2, FileJson, Key, Github, Zap, Cloud, ChevronDown, ChevronUp, Upload, Album, Save, Minus } from 'lucide-react'
+
+interface ConsolidationRule {
+  artistName: string
+  baseAlbumName: string
+  variations: string[]
+}
+
+interface AlbumVariation {
+  albumName: string
+  count: number
+}
+
+// Match consolidation.ts: same normalization used for auto-merge (case + dashes)
+function normalizeDashes(text: string): string {
+  return text
+    .replace(/\u2013/g, '-')
+    .replace(/\u2014/g, '-')
+    .replace(/\u2015/g, '-')
+    .replace(/\u2212/g, '-')
+    .replace(/\uFE63/g, '-')
+    .replace(/\uFF0D/g, '-')
+}
+function normalizeAlbumKey(name: string): string {
+  return normalizeDashes(name.toLowerCase().trim())
+}
 
 interface RecentPlayItem {
   track: {
@@ -59,6 +84,8 @@ export default function SettingsPage() {
   const [recentTracksLoading, setRecentTracksLoading] = useState(true)
   const [recentTracksError, setRecentTracksError] = useState<string | null>(null)
   const [setupGuideOpen, setSetupGuideOpen] = useState(false)
+  const [uploadHistoryExpanded, setUploadHistoryExpanded] = useState(false)
+  const [rulesSectionExpanded, setRulesSectionExpanded] = useState(false)
 
   const [uploadSecret, setUploadSecret] = useState('')
   const [uploadFiles, setUploadFiles] = useState<File[]>([])
@@ -71,6 +98,24 @@ export default function SettingsPage() {
     notConfigured?: boolean
   } | null>(null)
   const [dragOver, setDragOver] = useState(false)
+
+  const [rules, setRules] = useState<ConsolidationRule[]>([])
+  const [initialRules, setInitialRules] = useState<ConsolidationRule[]>([])
+  const [variationsByArtist, setVariationsByArtist] = useState<Record<string, AlbumVariation[]>>({})
+  const [rulesLoading, setRulesLoading] = useState(true)
+  const [variationsLoading, setVariationsLoading] = useState(true)
+  const [rulesSaveLoading, setRulesSaveLoading] = useState(false)
+  const [rulesSaveResult, setRulesSaveResult] = useState<{ success?: boolean; error?: string } | null>(null)
+  const [expandedArtists, setExpandedArtists] = useState<Set<string>>(new Set())
+  const [rulesSearch, setRulesSearch] = useState('')
+  const [minTotalPlaysFilter, setMinTotalPlaysFilter] = useState<string>('')
+  const [mergeIntoTarget, setMergeIntoTarget] = useState<{
+    artistName: string
+    baseDisplayName: string
+    baseNormalizedKey: string
+    existingRule?: ConsolidationRule
+  } | null>(null)
+  const [mergeIntoSelected, setMergeIntoSelected] = useState<Set<string>>(new Set())
 
   const isValidUploadFilename = (name: string) =>
     name.startsWith('Streaming_History_Audio_') && name.endsWith('.json')
@@ -249,6 +294,45 @@ export default function SettingsPage() {
   }, [])
 
   useEffect(() => {
+    const fetchRules = async () => {
+      setRulesLoading(true)
+      try {
+        const res = await fetch('/api/album-consolidation-rules', { cache: 'no-store' })
+        const data = await res.json()
+        const loaded = Array.isArray(data.rules) ? data.rules : []
+        setRules(loaded)
+        setInitialRules(loaded)
+      } catch {
+        setRules([])
+        setInitialRules([])
+      } finally {
+        setRulesLoading(false)
+      }
+    }
+    fetchRules()
+  }, [])
+
+  useEffect(() => {
+    const fetchVariations = async () => {
+      setVariationsLoading(true)
+      try {
+        const res = await fetch('/api/data/album-variations-by-artist', { cache: 'no-store' })
+        if (res.ok) {
+          const data = await res.json()
+          setVariationsByArtist(typeof data === 'object' && data !== null ? data : {})
+        } else {
+          setVariationsByArtist({})
+        }
+      } catch {
+        setVariationsByArtist({})
+      } finally {
+        setVariationsLoading(false)
+      }
+    }
+    fetchVariations()
+  }, [])
+
+  useEffect(() => {
     const fetchRecentTracks = async () => {
       setRecentTracksLoading(true)
       setRecentTracksError(null)
@@ -328,6 +412,177 @@ export default function SettingsPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const artistNames = Array.from(
+    new Set([
+      ...Object.keys(variationsByArtist).filter(
+        (a) => (variationsByArtist[a]?.length ?? 0) >= 2
+      ),
+      ...rules.map((r) => r.artistName),
+    ])
+  ).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+  const filteredBySearch = rulesSearch.trim()
+    ? artistNames.filter((a) =>
+        a.toLowerCase().includes(rulesSearch.trim().toLowerCase())
+      )
+    : artistNames
+
+  type ConsolidatedGroup = { displayName: string; variations: AlbumVariation[]; rule?: ConsolidationRule }
+  const artistDisplayData = useMemo(() => {
+    const data: Record<string, { consolidated: ConsolidatedGroup[]; notConsolidated: [string, AlbumVariation[]][]; totalPlays: number }> = {}
+    const allArtistNames = new Set([
+      ...Object.keys(variationsByArtist),
+      ...rules.map((r) => r.artistName),
+    ])
+    allArtistNames.forEach((artistName) => {
+      const variations = variationsByArtist[artistName] || []
+      const artistRules = rules.filter((r) => r.artistName === artistName)
+      const totalPlays = variations.reduce((sum, v) => sum + v.count, 0)
+      const byNormalized = new Map<string, AlbumVariation[]>()
+      variations.forEach((v) => {
+        const k = normalizeAlbumKey(v.albumName)
+        if (!byNormalized.has(k)) byNormalized.set(k, [])
+        byNormalized.get(k)!.push(v)
+      })
+      const ruleToCovered = new Map<ConsolidationRule, AlbumVariation[]>()
+      artistRules.forEach((rule) => {
+        const covered = variations.filter(
+          (v) =>
+            normalizeAlbumKey(v.albumName) === normalizeAlbumKey(rule.baseAlbumName) ||
+            rule.variations.some((variation) => normalizeAlbumKey(variation) === normalizeAlbumKey(v.albumName))
+        )
+        if (covered.length > 0) ruleToCovered.set(rule, covered)
+      })
+      const coveredByRuleKeys = new Set(
+        [...ruleToCovered.values()].flatMap((list) => list.map((v) => normalizeAlbumKey(v.albumName)))
+      )
+      const consolidated: ConsolidatedGroup[] = []
+      ruleToCovered.forEach((covered, rule) => {
+        consolidated.push({ displayName: rule.baseAlbumName, variations: covered, rule })
+      })
+      byNormalized.forEach((list, normKey) => {
+        if (coveredByRuleKeys.has(normKey)) return
+        if (list.length >= 2) consolidated.push({ displayName: list[0]?.albumName ?? normKey, variations: list })
+      })
+      const notConsolidated = [...byNormalized.entries()].filter(
+        ([k, list]) => list.length === 1 && !coveredByRuleKeys.has(k)
+      )
+      data[artistName] = { consolidated, notConsolidated, totalPlays }
+    })
+    return data
+  }, [variationsByArtist, rules, rules.length])
+
+  const rulesDiff = useMemo(() => {
+    const key = (r: ConsolidationRule) => `${r.artistName}\0${normalizeAlbumKey(r.baseAlbumName)}`
+    const variationSet = (r: ConsolidationRule) => new Set(r.variations.map((v) => normalizeAlbumKey(v)).sort())
+    const initialByKey = new Map(initialRules.map((r) => [key(r), r]))
+    const addedOrModified: ConsolidationRule[] = []
+    rules.forEach((r) => {
+      const orig = initialByKey.get(key(r))
+      if (!orig) addedOrModified.push(r)
+      else if (variationSet(r).size !== variationSet(orig).size || [...variationSet(r)].some((v) => !variationSet(orig).has(v))) addedOrModified.push(r)
+    })
+    const currentByKey = new Set(rules.map((r) => key(r)))
+    const removed = initialRules.filter((r) => !currentByKey.has(key(r)))
+    return { addedOrModified, removed }
+  }, [rules, initialRules])
+
+  const hasRulesChanges = rulesDiff.addedOrModified.length > 0 || rulesDiff.removed.length > 0
+
+  const minPlays = minTotalPlaysFilter.trim() === '' ? null : parseInt(minTotalPlaysFilter, 10)
+  const filteredArtistNames =
+    minPlays != null && !Number.isNaN(minPlays)
+      ? filteredBySearch.filter((name) => (artistDisplayData[name]?.totalPlays ?? 0) >= minPlays)
+      : filteredBySearch
+
+  const addRule = (artistName: string, baseAlbumName: string, variationAlbumNames: string[]) => {
+    const variations = variationAlbumNames.filter((v) => v !== baseAlbumName)
+    if (variations.length === 0) return
+    setRules((prev) => [
+      ...prev,
+      { artistName, baseAlbumName, variations },
+    ])
+    setRulesSaveResult(null)
+  }
+
+  const addVariationsToRule = (rule: ConsolidationRule, newVariationNames: string[]) => {
+    const baseKey = normalizeAlbumKey(rule.baseAlbumName)
+    const existingKeys = new Set(rule.variations.map((v) => normalizeAlbumKey(v)))
+    const toAdd = newVariationNames.filter(
+      (name) => normalizeAlbumKey(name) !== baseKey && !existingKeys.has(normalizeAlbumKey(name))
+    )
+    if (toAdd.length === 0) return
+    setRules((prev) =>
+      prev.map((r) => (r === rule ? { ...r, variations: [...r.variations, ...toAdd] } : r))
+    )
+    setRulesSaveResult(null)
+  }
+
+  const removeRule = (index: number) => {
+    setRules((prev) => prev.filter((_, i) => i !== index))
+    setRulesSaveResult(null)
+    setMergeIntoTarget(null)
+    setMergeIntoSelected(new Set())
+  }
+
+  const ruleKey = (r: ConsolidationRule) => `${r.artistName}\0${normalizeAlbumKey(r.baseAlbumName)}`
+
+  const revertAddedOrModifiedRule = (rule: ConsolidationRule) => {
+    const initial = initialRules.find((o) => ruleKey(o) === ruleKey(rule))
+    setRules((prev) => {
+      if (initial) {
+        return prev.map((r) => (ruleKey(r) === ruleKey(rule) ? initial : r))
+      }
+      return prev.filter((r) => ruleKey(r) !== ruleKey(rule))
+    })
+    setRulesSaveResult(null)
+    setMergeIntoTarget(null)
+    setMergeIntoSelected(new Set())
+  }
+
+  const revertRemovedRule = (rule: ConsolidationRule) => {
+    setRules((prev) => [...prev, rule])
+    setRulesSaveResult(null)
+  }
+
+  const saveRules = async () => {
+    if (!uploadSecret.trim()) {
+      setRulesSaveResult({ error: 'Enter your upload secret.' })
+      return
+    }
+    setRulesSaveLoading(true)
+    setRulesSaveResult(null)
+    try {
+      const res = await fetch('/api/album-consolidation-rules', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Upload-Secret': uploadSecret.trim(),
+        },
+        body: JSON.stringify({ rules }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setRulesSaveResult({ error: data.error || 'Failed to save rules' })
+        return
+      }
+      setRulesSaveResult({ success: true })
+      setInitialRules(rules)
+    } catch {
+      setRulesSaveResult({ error: 'Failed to save rules' })
+    } finally {
+      setRulesSaveLoading(false)
+    }
+  }
+
+  const toggleArtistExpanded = (artist: string) => {
+    setExpandedArtists((prev) => {
+      const next = new Set(prev)
+      if (next.has(artist)) next.delete(artist)
+      else next.add(artist)
+      return next
+    })
   }
 
   return (
@@ -453,7 +708,7 @@ export default function SettingsPage() {
                     5. Upload your data in the app
                   </h3>
                   <p className="text-sm text-muted-foreground mb-2">
-                    Use <strong>Upload streaming history</strong> below to select or drag your <code className="text-foreground/80">Streaming_History_Audio_*.json</code> files. They are uploaded to your repo and the <strong>Merge Streaming History</strong> workflow runs automatically. Alternatively, add the files to <code className="text-foreground/80">data/spotify-history/</code> in your repo and push manually.
+                    Use <strong>Upload streaming history</strong> below to select or drag your <code className="text-foreground/80">Streaming_History_Audio_*.json</code> files. They are uploaded to your repo and the <strong>Merge Streaming History</strong> workflow runs automatically. Alternatively, add the files to <code className="text-foreground/80">data/spotify-history/</code> in your repo and push manually. You can edit album consolidation rules below and save them to your repo.
                   </p>
                 </section>
               </div>
@@ -462,15 +717,22 @@ export default function SettingsPage() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="w-4 h-4" />
-              Upload streaming history
-            </CardTitle>
+          <CardHeader
+            className="cursor-pointer select-none hover:bg-muted/30 transition-colors rounded-t-lg"
+            onClick={() => setUploadHistoryExpanded((e) => !e)}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="w-4 h-4" />
+                Upload streaming history
+              </CardTitle>
+              {uploadHistoryExpanded ? <ChevronUp className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
+            </div>
             <p className="text-sm text-muted-foreground">
               Add your <code className="text-foreground/80">Streaming_History_Audio_*.json</code> files here. They will be uploaded to your repo and the Merge Streaming History workflow will run automatically.
             </p>
           </CardHeader>
+          {uploadHistoryExpanded && (
           <CardContent className="space-y-4">
             <div className="flex flex-col gap-2">
               <label htmlFor="upload-secret" className="text-sm font-medium">
@@ -567,6 +829,466 @@ export default function SettingsPage() {
               </div>
             )}
           </CardContent>
+          )}
+        </Card>
+
+        <Card>
+          <CardHeader
+            className="cursor-pointer select-none hover:bg-muted/30 transition-colors rounded-t-lg"
+            onClick={() => setRulesSectionExpanded((e) => !e)}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2">
+                <Album className="w-4 h-4" />
+                Album consolidation rules
+              </CardTitle>
+              {rulesSectionExpanded ? <ChevronUp className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              You choose what to merge: different spellings of the same album (e.g. deluxe, remastered) can be consolidated so you get a clearer picture of how much an album has actually been listened to. We already merge variations that only differ by casing or punctuation (e.g. different licenses or “Album” vs “album”) without rules. Here you add rules for other variations you want combined. Enter your upload secret below to save.
+            </p>
+          </CardHeader>
+          {rulesSectionExpanded && (
+          <CardContent className="space-y-4">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="rules-upload-secret" className="text-sm font-medium">
+                Upload secret
+              </label>
+              <input
+                id="rules-upload-secret"
+                type="password"
+                value={uploadSecret}
+                onChange={(e) => {
+                  setUploadSecret(e.target.value)
+                  setRulesSaveResult(null)
+                }}
+                placeholder="Upload secret"
+                className="w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                autoComplete="off"
+              />
+            </div>
+            {rulesLoading && variationsLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Loading rules and variations...</span>
+              </div>
+            ) : (
+              <>
+                {!variationsLoading && Object.keys(variationsByArtist).length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Run merge and generate cleaned files to see album variations from your data. You can still edit and save rules below.
+                  </p>
+                )}
+                {!variationsLoading && artistNames.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Showing artists with at least 2 different albums played.
+                  </p>
+                )}
+                <div className="flex flex-wrap items-end gap-4">
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="rules-search" className="text-sm font-medium">
+                      Filter by artist
+                    </label>
+                    <input
+                      id="rules-search"
+                      type="text"
+                      value={rulesSearch}
+                      onChange={(e) => setRulesSearch(e.target.value)}
+                      placeholder="Search artists..."
+                      className="w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="min-total-plays" className="text-sm font-medium">
+                      Min total plays
+                    </label>
+                    <input
+                      id="min-total-plays"
+                      type="number"
+                      min={0}
+                      value={minTotalPlaysFilter}
+                      onChange={(e) => setMinTotalPlaysFilter(e.target.value)}
+                      placeholder="Any"
+                      className="w-28 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {filteredArtistNames.length} artist{filteredArtistNames.length !== 1 ? 's' : ''}
+                </p>
+                <ul className="space-y-2 max-h-[500px] overflow-y-auto">
+                  {filteredArtistNames.map((artistName) => {
+                    const expanded = expandedArtists.has(artistName)
+                    const displayData = artistDisplayData[artistName]
+                    const hasVariations = (variationsByArtist[artistName]?.length ?? 0) > 0
+                    return (
+                      <li key={artistName} className="border border-border rounded-md overflow-hidden">
+                        <button
+                          type="button"
+                          className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-sm font-medium hover:bg-muted/50"
+                          onClick={() => toggleArtistExpanded(artistName)}
+                        >
+                          <span>{artistName}</span>
+                          {expanded ? <ChevronUp className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
+                        </button>
+                        {expanded && displayData && (
+                          <div
+                            key={`${artistName}-${displayData.consolidated.length}-${displayData.notConsolidated.length}-${displayData.notConsolidated.map(([k]) => k).sort().join('|')}`}
+                            className="px-3 pb-3 pt-0 space-y-3 border-t border-border"
+                          >
+                            {hasVariations && (() => {
+                              const { consolidated, notConsolidated, totalPlays } = displayData
+                              return (
+                                <div className="space-y-3">
+                                  <p className="text-xs font-medium text-muted-foreground">Album variations from your data</p>
+                                  {consolidated.length > 0 && (
+                                    <div>
+                                      <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-500" />
+                                        Consolidated (click to merge more into a group)
+                                      </p>
+                                      <ul className="text-sm space-y-2">
+                                        {consolidated.map((group, i) => {
+                                          const isMergeTarget = mergeIntoTarget?.artistName === artistName && mergeIntoTarget.baseNormalizedKey === normalizeAlbumKey(group.displayName)
+                                          return (
+                                            <Fragment key={`${artistName}-consolidated-${i}`}>
+                                              <li
+                                                className="rounded-md bg-muted/30 border border-border/50 flex items-start justify-between gap-2"
+                                              >
+                                                <button
+                                                  type="button"
+                                                  className="min-w-0 flex-1 px-2 py-1.5 text-left hover:bg-muted/50 rounded-md transition-colors"
+                                                  onClick={() => {
+                                                    setMergeIntoTarget({
+                                                      artistName,
+                                                      baseDisplayName: group.displayName,
+                                                      baseNormalizedKey: normalizeAlbumKey(group.displayName),
+                                                      existingRule: group.rule,
+                                                    })
+                                                    setMergeIntoSelected(new Set())
+                                                  }}
+                                                >
+                                                  <span className="font-medium">{group.displayName}</span>
+                                                  <ul className="mt-1 space-y-0.5 ml-2">
+                                                    {(group.rule != null
+                                                      ? (() => {
+                                                          const seenKeys = new Set<string>()
+                                                          const names = [group.rule.baseAlbumName, ...group.rule.variations]
+                                                          return names
+                                                            .filter((name) => {
+                                                              const k = normalizeAlbumKey(name)
+                                                              if (seenKeys.has(k)) return false
+                                                              seenKeys.add(k)
+                                                              return true
+                                                            })
+                                                            .map((name) => {
+                                                              const k = normalizeAlbumKey(name)
+                                                              const match = group.variations.find((v) => normalizeAlbumKey(v.albumName) === k)
+                                                              const count = match ? match.count : 0
+                                                              const pct = totalPlays > 0 ? Math.round((count / totalPlays) * 100) : 0
+                                                              return { name, count, pct }
+                                                            })
+                                                        })()
+                                                      : group.variations.map((v) => ({
+                                                          name: v.albumName,
+                                                          count: v.count,
+                                                          pct: totalPlays > 0 ? Math.round((v.count / totalPlays) * 100) : 0,
+                                                        }))
+                                                    ).map(({ name, count, pct }) => (
+                                                      <li key={name} className="flex justify-between gap-2 text-muted-foreground">
+                                                        <span className="truncate">{name}</span>
+                                                        <span className="shrink-0">{count.toLocaleString()} plays ({pct}%)</span>
+                                                      </li>
+                                                    ))}
+                                                  </ul>
+                                                </button>
+                                                {group.rule != null && (
+                                                  <button
+                                                    type="button"
+                                                    className="text-muted-foreground hover:text-foreground shrink-0 p-2"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation()
+                                                      removeRule(rules.findIndex((r) => r === group.rule))
+                                                    }}
+                                                    aria-label={`Remove rule for ${group.displayName}`}
+                                                  >
+                                                    <Minus className="w-4 h-4" />
+                                                  </button>
+                                                )}
+                                              </li>
+                                              {isMergeTarget && (
+                                                <li className="list-none -mx-2 mt-1">
+                                                  {(() => {
+                                                    const candidates = notConsolidated
+                                                      .filter(([, list]) => normalizeAlbumKey(list[0].albumName) !== mergeIntoTarget!.baseNormalizedKey)
+                                                      .map(([, list]) => list[0].albumName)
+                                                    return (
+                                                      <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+                                                        <p className="text-xs font-medium">
+                                                          Merge into <strong>{mergeIntoTarget!.baseDisplayName}</strong>
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                          Select albums to consolidate into this one:
+                                                        </p>
+                                                        {candidates.length === 0 ? (
+                                                          <p className="text-xs text-muted-foreground italic">No other unconsolidated albums to merge.</p>
+                                                        ) : (
+                                                          <ul className="text-sm space-y-1 max-h-40 overflow-y-auto">
+                                                            {candidates.map((albumName) => (
+                                                              <li key={albumName}>
+                                                                <label className="flex items-center gap-2 cursor-pointer hover:bg-muted/30 rounded px-1.5 py-0.5 -mx-1.5">
+                                                                  <input
+                                                                    type="checkbox"
+                                                                    checked={mergeIntoSelected.has(albumName)}
+                                                                    onChange={(e) => {
+                                                                      setMergeIntoSelected((prev) => {
+                                                                        const next = new Set(prev)
+                                                                        if (e.target.checked) next.add(albumName)
+                                                                        else next.delete(albumName)
+                                                                        return next
+                                                                      })
+                                                                    }}
+                                                                  />
+                                                                  <span className="truncate">{albumName}</span>
+                                                                </label>
+                                                              </li>
+                                                            ))}
+                                                          </ul>
+                                                        )}
+                                                        <div className="flex gap-2 pt-1">
+                                                          <button
+                                                            type="button"
+                                                            className="rounded bg-primary px-2 py-1 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                                                            disabled={mergeIntoSelected.size === 0}
+                                                            onClick={() => {
+                                                              if (mergeIntoTarget!.existingRule) {
+                                                                addVariationsToRule(mergeIntoTarget!.existingRule, Array.from(mergeIntoSelected))
+                                                              } else {
+                                                                addRule(artistName, mergeIntoTarget!.baseDisplayName, Array.from(mergeIntoSelected))
+                                                              }
+                                                              setMergeIntoTarget(null)
+                                                              setMergeIntoSelected(new Set())
+                                                            }}
+                                                          >
+                                                            Merge {mergeIntoSelected.size > 0 ? `(${mergeIntoSelected.size})` : ''}
+                                                          </button>
+                                                          <button
+                                                            type="button"
+                                                            className="rounded border border-input px-2 py-1 text-sm hover:bg-muted/50"
+                                                            onClick={() => {
+                                                              setMergeIntoTarget(null)
+                                                              setMergeIntoSelected(new Set())
+                                                            }}
+                                                          >
+                                                            Cancel
+                                                          </button>
+                                                        </div>
+                                                      </div>
+                                                    )
+                                                  })()}
+                                                </li>
+                                              )}
+                                            </Fragment>
+                                          )
+                                        })}
+                                      </ul>
+                                    </div>
+                                  )}
+                                  {notConsolidated.length > 0 && (
+                                    <div>
+                                      <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                        <Album className="w-3.5 h-3.5" />
+                                        Not consolidated (click to merge others into it)
+                                      </p>
+                                      <ul className="text-sm space-y-1">
+                                        {notConsolidated.map(([, list]) => {
+                                          const v = list[0]
+                                          const pct = totalPlays > 0 ? Math.round((v.count / totalPlays) * 100) : 0
+                                          const isMergeTarget = mergeIntoTarget?.artistName === artistName && mergeIntoTarget.baseNormalizedKey === normalizeAlbumKey(v.albumName)
+                                          return (
+                                            <Fragment key={v.albumName}>
+                                              <li>
+                                                <button
+                                                  type="button"
+                                                  className="w-full flex justify-between gap-2 text-muted-foreground text-left hover:bg-muted/50 rounded px-1.5 py-0.5 -mx-1.5 transition-colors"
+                                                  onClick={() => {
+                                                    setMergeIntoTarget({
+                                                      artistName,
+                                                      baseDisplayName: v.albumName,
+                                                      baseNormalizedKey: normalizeAlbumKey(v.albumName),
+                                                      existingRule: undefined,
+                                                    })
+                                                    setMergeIntoSelected(new Set())
+                                                  }}
+                                                >
+                                                  <span className="truncate">{v.albumName}</span>
+                                                  <span className="shrink-0">{v.count.toLocaleString()} plays ({pct}%)</span>
+                                                </button>
+                                              </li>
+                                              {isMergeTarget && (
+                                                <li className="list-none -mx-2 mt-1">
+                                                  {(() => {
+                                                    const candidates = notConsolidated
+                                                      .filter(([, l]) => normalizeAlbumKey(l[0].albumName) !== mergeIntoTarget!.baseNormalizedKey)
+                                                      .map(([, l]) => l[0].albumName)
+                                                    return (
+                                                      <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+                                                        <p className="text-xs font-medium">
+                                                          Merge into <strong>{mergeIntoTarget!.baseDisplayName}</strong>
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                          Select albums to consolidate into this one:
+                                                        </p>
+                                                        {candidates.length === 0 ? (
+                                                          <p className="text-xs text-muted-foreground italic">No other unconsolidated albums to merge.</p>
+                                                        ) : (
+                                                          <ul className="text-sm space-y-1 max-h-40 overflow-y-auto">
+                                                            {candidates.map((albumName) => (
+                                                              <li key={albumName}>
+                                                                <label className="flex items-center gap-2 cursor-pointer hover:bg-muted/30 rounded px-1.5 py-0.5 -mx-1.5">
+                                                                  <input
+                                                                    type="checkbox"
+                                                                    checked={mergeIntoSelected.has(albumName)}
+                                                                    onChange={(e) => {
+                                                                      setMergeIntoSelected((prev) => {
+                                                                        const next = new Set(prev)
+                                                                        if (e.target.checked) next.add(albumName)
+                                                                        else next.delete(albumName)
+                                                                        return next
+                                                                      })
+                                                                    }}
+                                                                  />
+                                                                  <span className="truncate">{albumName}</span>
+                                                                </label>
+                                                              </li>
+                                                            ))}
+                                                          </ul>
+                                                        )}
+                                                        <div className="flex gap-2 pt-1">
+                                                          <button
+                                                            type="button"
+                                                            className="rounded bg-primary px-2 py-1 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                                                            disabled={mergeIntoSelected.size === 0}
+                                                            onClick={() => {
+                                                              if (mergeIntoTarget!.existingRule) {
+                                                                addVariationsToRule(mergeIntoTarget!.existingRule, Array.from(mergeIntoSelected))
+                                                              } else {
+                                                                addRule(artistName, mergeIntoTarget!.baseDisplayName, Array.from(mergeIntoSelected))
+                                                              }
+                                                              setMergeIntoTarget(null)
+                                                              setMergeIntoSelected(new Set())
+                                                            }}
+                                                          >
+                                                            Merge {mergeIntoSelected.size > 0 ? `(${mergeIntoSelected.size})` : ''}
+                                                          </button>
+                                                          <button
+                                                            type="button"
+                                                            className="rounded border border-input px-2 py-1 text-sm hover:bg-muted/50"
+                                                            onClick={() => {
+                                                              setMergeIntoTarget(null)
+                                                              setMergeIntoSelected(new Set())
+                                                            }}
+                                                          >
+                                                            Cancel
+                                                          </button>
+                                                        </div>
+                                                      </div>
+                                                    )
+                                                  })()}
+                                                </li>
+                                              )}
+                                            </Fragment>
+                                          )
+                                        })}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })()}
+                          </div>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+                {filteredArtistNames.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No artists match. Add data and run generate cleaned files, or clear the filter.</p>
+                )}
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={saveRules}
+                    disabled={rulesSaveLoading || !uploadSecret.trim()}
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none"
+                  >
+                    {rulesSaveLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Saving…
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Save rules to GitHub
+                      </>
+                    )}
+                  </button>
+                  {rulesSaveResult && (
+                    <span className={rulesSaveResult.success ? 'text-sm text-green-600 dark:text-green-500' : 'text-sm text-red-500'}>
+                      {rulesSaveResult.success ? 'Saved.' : rulesSaveResult.error}
+                    </span>
+                  )}
+                </div>
+                {hasRulesChanges && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Changes to commit ({rulesDiff.addedOrModified.length + rulesDiff.removed.length})
+                    </p>
+                    <ul className="max-h-48 overflow-y-auto rounded-md border border-border bg-muted/20 p-2 text-sm space-y-1.5">
+                      {rulesDiff.addedOrModified.map((r, i) => (
+                        <li key={`add-${r.artistName}-${r.baseAlbumName}-${i}`} className="flex flex-wrap items-center gap-x-1 gap-y-0.5 group">
+                          <span className="text-green-600 dark:text-green-500 shrink-0 font-medium">+</span>
+                          <span className="font-medium shrink-0">{r.artistName}</span>
+                          <span className="text-muted-foreground shrink-0">—</span>
+                          <span className="shrink-0">{r.baseAlbumName}</span>
+                          <span className="text-muted-foreground shrink-0">←</span>
+                          <span className="text-muted-foreground truncate min-w-0">{r.variations.join(', ')}</span>
+                          <button
+                            type="button"
+                            onClick={() => revertAddedOrModifiedRule(r)}
+                            className="ml-auto shrink-0 text-muted-foreground hover:text-foreground p-0.5 rounded"
+                            aria-label={`Revert change for ${r.baseAlbumName}`}
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </button>
+                        </li>
+                      ))}
+                      {rulesDiff.removed.map((r, i) => (
+                        <li key={`rem-${r.artistName}-${r.baseAlbumName}-${i}`} className="flex flex-wrap items-center gap-x-1 gap-y-0.5 group">
+                          <span className="text-red-600 dark:text-red-500 shrink-0 font-medium">−</span>
+                          <span className="font-medium shrink-0">{r.artistName}</span>
+                          <span className="text-muted-foreground shrink-0">—</span>
+                          <span className="shrink-0">{r.baseAlbumName}</span>
+                          <span className="text-muted-foreground shrink-0">←</span>
+                          <span className="text-muted-foreground truncate min-w-0">{r.variations.join(', ')}</span>
+                          <button
+                            type="button"
+                            onClick={() => revertRemovedRule(r)}
+                            className="ml-auto shrink-0 text-muted-foreground hover:text-foreground p-0.5 rounded"
+                            aria-label={`Undo removal of ${r.baseAlbumName}`}
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+          )}
         </Card>
 
         <Card>

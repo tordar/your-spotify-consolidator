@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import SpotifyStatsLayout from '@/components/SpotifyStatsLayout'
-import { Clock, CheckCircle2, XCircle, Loader2, ExternalLink, Music2, Trash2, FileJson, Key, Github, Zap, Cloud, ChevronDown, ChevronUp } from 'lucide-react'
+import { Clock, CheckCircle2, XCircle, Loader2, ExternalLink, Music2, Trash2, FileJson, Key, Github, Zap, Cloud, ChevronDown, ChevronUp, Upload } from 'lucide-react'
 
 interface RecentPlayItem {
   track: {
@@ -59,6 +59,190 @@ export default function SettingsPage() {
   const [recentTracksLoading, setRecentTracksLoading] = useState(true)
   const [recentTracksError, setRecentTracksError] = useState<string | null>(null)
   const [setupGuideOpen, setSetupGuideOpen] = useState(false)
+
+  const [uploadSecret, setUploadSecret] = useState('')
+  const [uploadFiles, setUploadFiles] = useState<File[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [uploadResult, setUploadResult] = useState<{
+    uploaded: string[]
+    rejected: Array<{ name: string; reason: string }>
+    message?: string
+    error?: string
+    notConfigured?: boolean
+  } | null>(null)
+  const [dragOver, setDragOver] = useState(false)
+
+  const isValidUploadFilename = (name: string) =>
+    name.startsWith('Streaming_History_Audio_') && name.endsWith('.json')
+
+  // Vercel serverless request body limit ~4.5 MB; compress large files so payload stays under
+  const COMPRESS_THRESHOLD_BYTES = 3.5 * 1024 * 1024
+
+  const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+    const bytes = new Uint8Array(buffer)
+    let binary = ''
+    const chunkSize = 8192
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+    }
+    return btoa(binary)
+  }
+
+  const gzipFile = async (file: File): Promise<ArrayBuffer> => {
+    const stream = file.stream().pipeThrough(new CompressionStream('gzip'))
+    return await new Response(stream).arrayBuffer()
+  }
+
+  const onUploadFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).filter((f) => isValidUploadFilename(f.name))
+    setUploadFiles((prev) => [...prev, ...files])
+    setUploadResult(null)
+    e.target.value = ''
+  }
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    const files = Array.from(e.dataTransfer.files).filter((f) =>
+      isValidUploadFilename(f.name)
+    )
+    setUploadFiles((prev) => [...prev, ...files])
+    setUploadResult(null)
+  }
+
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(true)
+  }
+
+  const onDragLeave = () => setDragOver(false)
+
+  const removeUploadFile = (index: number) => {
+    setUploadFiles((prev) => prev.filter((_, i) => i !== index))
+    setUploadResult(null)
+  }
+
+  const FILES_PER_REQUEST = 3
+
+  const buildFormDataForChunk = async (
+    chunk: File[]
+  ): Promise<FormData> => {
+    const formData = new FormData()
+    const useCompression = chunk.some((f) => f.size >= COMPRESS_THRESHOLD_BYTES)
+    if (useCompression) {
+      for (const file of chunk) {
+        if (!isValidUploadFilename(file.name)) continue
+        const compressed = await gzipFile(file)
+        formData.append('compressed', arrayBufferToBase64(compressed))
+        formData.append('filename', file.name)
+      }
+    } else {
+      chunk.forEach((f) => formData.append('files', f))
+    }
+    return formData
+  }
+
+  const submitUpload = async () => {
+    if (uploadFiles.length === 0 || !uploadSecret.trim()) return
+    setUploading(true)
+    setUploadResult(null)
+    const allUploaded: string[] = []
+    const allRejected: Array<{ name: string; reason: string }> = []
+    const secret = uploadSecret.trim()
+    const headers = { 'X-Upload-Secret': secret }
+
+    try {
+      for (let i = 0; i < uploadFiles.length; i += FILES_PER_REQUEST) {
+        const chunk = uploadFiles.slice(i, i + FILES_PER_REQUEST)
+        let formData = await buildFormDataForChunk(chunk)
+        let res = await fetch('/api/upload-history', {
+          method: 'POST',
+          body: formData,
+          headers,
+        })
+        let data = await res.json()
+
+        if (res.status === 413 && chunk.length > 1) {
+          for (const file of chunk) {
+            const singleFormData = await buildFormDataForChunk([file])
+            res = await fetch('/api/upload-history', {
+              method: 'POST',
+              body: singleFormData,
+              headers,
+            })
+            data = await res.json()
+            if (res.ok) {
+              allUploaded.push(...(data.uploaded || []))
+              allRejected.push(...(data.rejected || []))
+            } else {
+              allRejected.push({
+                name: file.name,
+                reason: data.error || `Upload failed (${res.status})`,
+              })
+            }
+          }
+          continue
+        }
+
+        if (res.status === 401) {
+          setUploadResult({
+            uploaded: allUploaded,
+            rejected: allRejected,
+            error: data.error || 'Invalid upload secret.',
+          })
+          return
+        }
+        if (res.status === 501) {
+          setUploadResult({
+            uploaded: allUploaded,
+            rejected: allRejected,
+            error: data.error || 'Upload not configured.',
+            notConfigured: true,
+          })
+          return
+        }
+        if (res.status === 413) {
+          setUploadResult({
+            uploaded: allUploaded,
+            rejected: allRejected,
+            error:
+              chunk.length === 1
+                ? 'Request too large even for a single file. Add the largest file(s) to the repo manually.'
+                : 'Request too large. Retrying one file at a time failed.',
+          })
+          return
+        }
+        if (!res.ok) {
+          setUploadResult({
+            uploaded: allUploaded,
+            rejected: allRejected,
+            error: data.error || 'Upload failed.',
+          })
+          return
+        }
+        allUploaded.push(...(data.uploaded || []))
+        allRejected.push(...(data.rejected || []))
+      }
+
+      setUploadResult({
+        uploaded: allUploaded,
+        rejected: allRejected,
+        message:
+          allUploaded.length > 0
+            ? `Uploaded ${allUploaded.length} file(s) in ${Math.ceil(uploadFiles.length / FILES_PER_REQUEST)} commit(s).`
+            : undefined,
+      })
+      if (allUploaded.length > 0) setUploadFiles([])
+    } catch {
+      setUploadResult({
+        uploaded: allUploaded,
+        rejected: allRejected,
+        error: 'Failed to upload files.',
+      })
+    } finally {
+      setUploading(false)
+    }
+  }
 
   useEffect(() => {
     fetchSyncStatus()
@@ -187,24 +371,29 @@ export default function SettingsPage() {
                   <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
                     <li>Go to <a href="https://www.spotify.com/account/privacy/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Spotify Privacy Settings <ExternalLink className="w-3 h-3" /></a>.</li>
                     <li>Under &quot;Download your data&quot;, click <strong>Request data</strong> and select <strong>Extended streaming history</strong>.</li>
-                    <li>Wait for the email (can take a few days), download the ZIP, and extract it.</li>
+                    <li>Wait for the email (can take a few days), download the ZIP, and extract it. You will upload the files in step 5.</li>
                   </ol>
                 </section>
 
                 <section>
                   <h3 className="flex items-center gap-2 font-semibold text-sm mb-2">
-                    <Trash2 className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
-                    2. Fork the repo and add your data
+                    <Cloud className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+                    2. Fork the repo and deploy to Vercel
                   </h3>
-                  <p className="text-sm text-muted-foreground">
-                    <a href="https://github.com/tordar/spotify-pulse/fork" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Fork the repository <ExternalLink className="w-3 h-3" /></a>. Put all <code className="text-foreground/80">Streaming_History_Audio_*.json</code> files into <code className="text-foreground/80">data/spotify-history/</code>.
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Get the app online first; you will add data and secrets next.
                   </p>
+                  <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
+                    <li><a href="https://github.com/tordar/spotify-pulse/fork" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Fork the repository <ExternalLink className="w-3 h-3" /></a>.</li>
+                    <li>In <a href="https://vercel.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Vercel <ExternalLink className="w-3 h-3" /></a>, <strong>Add New Project</strong> and import your forked GitHub repo.</li>
+                    <li>Deploy. The app will be live but without data until you complete the remaining steps.</li>
+                  </ol>
                 </section>
 
                 <section>
                   <h3 className="flex items-center gap-2 font-semibold text-sm mb-2">
                     <Key className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
-                    3. Set up your own Spotify Developer application
+                    3. Set up your Spotify Developer application
                   </h3>
                   <p className="text-sm text-muted-foreground mb-2">
                     Create an app to get Client ID, Client Secret, and a refresh token for sync and metadata.
@@ -213,63 +402,171 @@ export default function SettingsPage() {
                     <li>Create an app at <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Spotify Developer Dashboard <ExternalLink className="w-3 h-3" /></a>.</li>
                     <li>Note <strong>Client ID</strong> and <strong>Client Secret</strong>, and add this redirect URI in your app: <code className="text-foreground/80">http://127.0.0.1:3847/callback</code>.</li>
                     <li>Get a refresh token: run <code className="text-foreground/80 bg-muted px-1 rounded">npm run setup-spotify-auth</code> in the project root. A browser tab opens—enter your Client ID and Client Secret there, then authorize with Spotify. Tokens are saved automatically.</li>
-                    <li>Use the printed values for the next step.</li>
+                    <li>Use the printed values in the next step.</li>
                   </ol>
                 </section>
 
-                <section>
+                <section className="space-y-4">
                   <h3 className="flex items-center gap-2 font-semibold text-sm mb-2">
                     <Github className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
-                    4. Add GitHub environment variables (secrets)
+                    4. Add secrets and enable GitHub Actions
                   </h3>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Add repository secrets so GitHub Actions can sync and push.
-                  </p>
-                  <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1 mb-2">
-                    <li>In the repo: <strong>Settings → Secrets and variables → Actions</strong>.</li>
-                    <li>Add repository secrets:</li>
-                  </ol>
-                  <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1 mb-2">
-                    <li><strong>Required:</strong> <code className="text-foreground/80">SPOTIFY_CLIENT_ID</code>, <code className="text-foreground/80">SPOTIFY_CLIENT_SECRET</code>, <code className="text-foreground/80">SPOTIFY_REFRESH_TOKEN</code> (from step 3).</li>
-                    <li><strong>Required for sync workflow push:</strong> <code className="text-foreground/80">PERSONAL_ACCESS_TOKEN</code> (GitHub PAT with <code className="text-foreground/80">repo</code> scope).</li>
-                  </ul>
                   <p className="text-sm text-muted-foreground">
-                    Without <code className="text-foreground/80">PERSONAL_ACCESS_TOKEN</code>, the sync workflow cannot push; without Spotify secrets, sync and metadata enrichment will not work.
+                    Add credentials in both GitHub (for Actions) and Vercel (for the app and in-app upload).
+                  </p>
+
+                  <div className="space-y-3 pl-1">
+                    <p className="text-sm font-medium text-foreground">GitHub</p>
+                    <p className="text-sm text-muted-foreground">
+                      Repo → Settings → Secrets and variables → Actions. Add these repository secrets:
+                    </p>
+                    <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1.5">
+                      <li><code className="text-foreground/80 bg-muted/70 px-1 rounded">SPOTIFY_CLIENT_ID</code></li>
+                      <li><code className="text-foreground/80 bg-muted/70 px-1 rounded">SPOTIFY_CLIENT_SECRET</code></li>
+                      <li><code className="text-foreground/80 bg-muted/70 px-1 rounded">SPOTIFY_REFRESH_TOKEN</code></li>
+                      <li><code className="text-foreground/80 bg-muted/70 px-1 rounded">PERSONAL_ACCESS_TOKEN</code> (GitHub profile → Settings → Developer settings → Personal access tokens → Tokens (classic) - with repo scope)</li>
+                    </ul>
+                  </div>
+
+                  <div className="space-y-3 pl-1">
+                    <p className="text-sm font-medium text-foreground">Vercel</p>
+                    <p className="text-sm text-muted-foreground">
+                      Project → Settings → Environment Variables. Add these five:
+                    </p>
+                    <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1.5">
+                      <li><code className="text-foreground/80 bg-muted/70 px-1 rounded">SPOTIFY_CLIENT_ID</code></li>
+                      <li><code className="text-foreground/80 bg-muted/70 px-1 rounded">SPOTIFY_CLIENT_SECRET</code></li>
+                      <li><code className="text-foreground/80 bg-muted/70 px-1 rounded">SPOTIFY_REFRESH_TOKEN</code></li>
+                      <li><code className="text-foreground/80 bg-muted/70 px-1 rounded">GITHUB_TOKEN</code> (same GitHub PAT as above)</li>
+                      <li><code className="text-foreground/80 bg-muted/70 px-1 rounded">UPLOAD_SECRET</code> (a secret only you know; you enter it in the upload form to authorize uploads)</li>
+                    </ul>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">
+                    In the repo, open the <strong>Actions</strong> tab and ensure Actions are enabled.
                   </p>
                 </section>
 
                 <section>
                   <h3 className="flex items-center gap-2 font-semibold text-sm mb-2">
-                    <Zap className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
-                    5. Set up GitHub Actions
+                    <Trash2 className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+                    5. Upload your data in the app
                   </h3>
                   <p className="text-sm text-muted-foreground mb-2">
-                    Workflows are already in the repo; you only need to enable and understand them.
+                    Use <strong>Upload streaming history</strong> below to select or drag your <code className="text-foreground/80">Streaming_History_Audio_*.json</code> files. They are uploaded to your repo and the <strong>Merge Streaming History</strong> workflow runs automatically. Alternatively, add the files to <code className="text-foreground/80">data/spotify-history/</code> in your repo and push manually.
                   </p>
-                  <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
-                    <li><strong>Actions</strong> tab → ensure Actions are enabled for the repo.</li>
-                    <li><strong>Initial merge:</strong> Pushing your <code className="text-foreground/80">Streaming_History_Audio_*.json</code> files to <code className="text-foreground/80">data/spotify-history/</code> triggers <strong>Merge Streaming History</strong>, which runs merge + generate + add-podcast-data and commits merged/cleaned data (Spotify secrets must be set for metadata).</li>
-                    <li><strong>Ongoing sync:</strong> <strong>Spotify Data Sync</strong> runs every 2 hours; it fetches recent plays, merges, regenerates cleaned data, commits and pushes. Vercel redeploys automatically when the repo is updated.</li>
-                  </ol>
-                </section>
-
-                <section>
-                  <h3 className="flex items-center gap-2 font-semibold text-sm mb-2">
-                    <Cloud className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
-                    6. Deploy your app to Vercel
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Deploy the app so the dashboard is available online; data is read from the repo (cleaned data committed by Actions).
-                  </p>
-                  <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
-                    <li>In <a href="https://vercel.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Vercel <ExternalLink className="w-3 h-3" /></a>, <strong>Add New Project</strong> and import the GitHub repository.</li>
-                    <li><strong>Environment variables</strong> (in Vercel project settings): <strong>Required for Spotify:</strong> <code className="text-foreground/80">SPOTIFY_CLIENT_ID</code>, <code className="text-foreground/80">SPOTIFY_CLIENT_SECRET</code>, <code className="text-foreground/80">SPOTIFY_REFRESH_TOKEN</code>. <strong>Optional (Settings page):</strong> <code className="text-foreground/80">GITHUB_TOKEN</code>, <code className="text-foreground/80">GITHUB_REPO_OWNER</code>, <code className="text-foreground/80">GITHUB_REPO_NAME</code> for sync status.</li>
-                    <li>Deploy. The live site updates automatically when Actions push new data to the repo.</li>
-                  </ol>
                 </section>
               </div>
             </CardContent>
           )}
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="w-4 h-4" />
+              Upload streaming history
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Add your <code className="text-foreground/80">Streaming_History_Audio_*.json</code> files here. They will be uploaded to your repo and the Merge Streaming History workflow will run automatically.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="upload-secret" className="text-sm font-medium">
+                Upload secret
+              </label>
+              <input
+                id="upload-secret"
+                type="password"
+                value={uploadSecret}
+                onChange={(e) => {
+                  setUploadSecret(e.target.value)
+                  setUploadResult(null)
+                }}
+                placeholder="Upload secret"
+                className="w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                autoComplete="off"
+              />
+            </div>
+            <div
+              onDrop={onDrop}
+              onDragOver={onDragOver}
+              onDragLeave={onDragLeave}
+              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                dragOver ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'
+              }`}
+            >
+              <input
+                type="file"
+                accept=".json"
+                multiple
+                onChange={onUploadFileChange}
+                className="hidden"
+                id="upload-history-input"
+              />
+              <label
+                htmlFor="upload-history-input"
+                className="cursor-pointer text-sm text-muted-foreground hover:text-foreground"
+              >
+                Choose files or drag and drop. Only <code className="text-foreground/80">Streaming_History_Audio_*.json</code> are accepted.
+              </label>
+            </div>
+            {uploadFiles.length > 0 && (
+              <ul className="space-y-1 text-sm">
+                {uploadFiles.map((f, i) => (
+                  <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2">
+                    <span className="truncate text-muted-foreground">{f.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeUploadFile(i)}
+                      className="text-muted-foreground hover:text-foreground shrink-0"
+                      aria-label={`Remove ${f.name}`}
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button
+              type="button"
+              onClick={submitUpload}
+              disabled={uploadFiles.length === 0 || !uploadSecret.trim() || uploading}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Uploading…
+                </>
+              ) : (
+                <>Upload {uploadFiles.length > 0 ? `${uploadFiles.length} file(s)` : 'files'}</>
+              )}
+            </button>
+            {uploadResult && (
+              <div className="rounded-md border border-border bg-muted/30 p-3 text-sm space-y-2">
+                {uploadResult.notConfigured && (
+                  <p className="text-amber-600 dark:text-amber-500">
+                    {uploadResult.error} Add <code className="bg-muted px-1 rounded">GITHUB_TOKEN</code>, <code className="bg-muted px-1 rounded">GITHUB_REPO_OWNER</code>, and <code className="bg-muted px-1 rounded">GITHUB_REPO_NAME</code> in Vercel project settings. Alternatively, add files to <code className="text-foreground/80">data/spotify-history/</code> in your repo and push manually.
+                  </p>
+                )}
+                {uploadResult.error && !uploadResult.notConfigured && (
+                  <p className="text-red-500">{uploadResult.error}</p>
+                )}
+                {uploadResult.uploaded.length > 0 && (
+                  <p className="text-green-600 dark:text-green-500">
+                    Uploaded: {uploadResult.uploaded.join(', ')}. {uploadResult.message}
+                  </p>
+                )}
+                {uploadResult.rejected.length > 0 && (
+                  <p className="text-muted-foreground">
+                    Rejected: {uploadResult.rejected.map((r) => `${r.name} (${r.reason})`).join('; ')}
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
         </Card>
 
         <Card>

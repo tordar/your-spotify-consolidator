@@ -1,13 +1,3 @@
-# Ignore everything except what we need for the web app
-# Include the data folder for the API to work
-!data/
-!web-app/
-!package.json
-!package-lock.json
-!vercel.json
-
-# Ignore build artifacts and other unnecessary files
-.next/
-node_modules/
-*.log
-.DS_Store
+# Exclude raw Spotify history (large JSONs) to stay under 250 MB serverless limit.
+# cleaned-data and merged-streaming-history are still included so the app can serve stats.
+data/spotify-history/

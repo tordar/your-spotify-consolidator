@@ -31,120 +31,93 @@ Your Spotify listening: historic, current, and daily. Process and visualize your
 4. Wait for Spotify to prepare your data (can take a few days)
 5. Download the ZIP, extract it, and locate files named `Streaming_History_Audio_*.json`
 
-## Installation
+## Setup (5 steps)
 
-1. Clone the repository:
+Follow this order to run your own instance with minimal friction: request data, fork and deploy, then add secrets and upload your history in the app.
+
+### Step 1: Request your data from Spotify
+
+You already have this from [Getting Your Data](#getting-your-spotify-data): request **Extended streaming history**, wait for the email, download the ZIP, and extract the `Streaming_History_Audio_*.json` files. You will upload them in Step 5.
+
+### Step 2: Fork the repo and deploy to Vercel
+
+1. [Fork the repository](https://github.com/tordar/spotify-pulse/fork) (or clone if you prefer: `git clone https://github.com/YOUR_USERNAME/spotify-pulse.git`).
+2. In [Vercel](https://vercel.com), **Add New Project** and import your forked GitHub repo.
+3. Deploy. The app will be live but without data until you complete the steps below.
+
+For local development instead:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/spotify-pulse.git
 cd spotify-pulse
-```
-
-2. Install dependencies:
-
-```bash
 npm install
 cd web-app && npm install && cd ..
-```
-
-3. Set up Spotify API credentials (needed for automatic syncing, metadata enrichment, and Now Playing):
-
-   - Create an app at [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
-   - Get `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`
-   - Set up a redirect URI and obtain a refresh token (see `scripts/setup-spotify-auth.ts`)
-   - Add to `.env` in the project root:
-
-   ```env
-   SPOTIFY_CLIENT_ID=your_client_id
-   SPOTIFY_CLIENT_SECRET=your_client_secret
-   SPOTIFY_REFRESH_TOKEN=your_refresh_token
-   ```
-
-## Usage
-
-### Step 1: Add Your Spotify History Data
-
-Put your extracted `Streaming_History_Audio_*.json` files into `data/spotify-history/`:
-
-```
-data/
-  spotify-history/
-    Streaming_History_Audio_2009-2013_0.json
-    Streaming_History_Audio_2013-2014_1.json
-    ...
-```
-
-### Step 2: Merge Streaming History
-
-Merge all streaming history files into one:
-
-```bash
-npm run merge-streaming-history
-```
-
-This reads all `Streaming_History_Audio_*.json` from `data/spotify-history/`, consolidates by song (play counts and listening time), and writes to `data/merged-streaming-history/merged-streaming-history-{timestamp}.json`.
-
-### Step 3: Generate Cleaned Files
-
-Generate cleaned data for the web app:
-
-```bash
-npm run generate-cleaned-files
-```
-
-This loads the merged history, builds cleaned songs/albums/artists and albums-with-songs, computes stats (yearly listening, top items, hourly distribution, country data), enriches with Spotify API metadata when configured, and saves to `data/cleaned-data/`.
-
-### Step 4: (Optional) Add Podcast Data to Stats
-
-If you have podcast streaming history in your export, add podcast hours into the detailed stats:
-
-```bash
-npm run add-podcast-data
-```
-
-This updates `detailed-stats-*.json` in `data/cleaned-data/` with podcast listening time per year. The dashboard shows music vs podcast in the yearly chart.
-
-### Step 5: View Your Statistics
-
-**Local development**
-
-```bash
 npm run web:dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-**Production build**
+### Step 3: Set up your Spotify Developer application
+
+1. Create an app at [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
+2. Note **Client ID** and **Client Secret**. Add redirect URI: `http://127.0.0.1:3847/callback`.
+3. Get a refresh token: in the project root run `npm run setup-spotify-auth` (a browser tab opens to authorize). Use the printed values in the next step.
+
+### Step 4: Add secrets and enable GitHub Actions
+
+Add the same credentials in two places: **GitHub** (for Actions) and **Vercel** (for the live app and in-app upload).
+
+**GitHub** (repo → Settings → Secrets and variables → Actions):
+
+| Secret | Description |
+|--------|-------------|
+| `SPOTIFY_CLIENT_ID` | Spotify app Client ID |
+| `SPOTIFY_CLIENT_SECRET` | Spotify app Client Secret |
+| `SPOTIFY_REFRESH_TOKEN` | From `npm run setup-spotify-auth` |
+| `PERSONAL_ACCESS_TOKEN` | GitHub PAT with `repo` (for workflows to push) |
+
+**Vercel** (Project → Settings → Environment Variables):
+
+- **Required:** `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REFRESH_TOKEN` (Now Playing, recently played).
+- **Required for Settings and upload:** `GITHUB_TOKEN` (same PAT with `repo` or `contents: write`) and `UPLOAD_SECRET` (a secret only you know; you enter it in the Settings upload form to authorize uploads). Repo owner/name are read from Vercel’s connection to your repo; you don’t need to set them.
+
+Then enable **Actions** in the repo’s **Actions** tab. Workflows are already in the repo; they run on push to `data/spotify-history/` (merge + generate) and on a schedule (sync recent plays every 2 hours).
+
+### Step 5: Upload your data in the app
+
+1. Open your deployed app and go to **Settings**.
+2. Use **Upload streaming history** to select or drag your `Streaming_History_Audio_*.json` files. They are uploaded to your repo at `data/spotify-history/`.
+3. The **Merge Streaming History** workflow runs automatically on that push: it merges files, runs `generate-cleaned-files` and `add-podcast-data`, then commits merged and cleaned data. Vercel redeploys and your dashboard will show your stats.
+
+Alternatively, you can add the files manually: put `Streaming_History_Audio_*.json` into `data/spotify-history/` in your repo and push; the same workflow will run.
+
+---
+
+## Usage (local or reference)
+
+If you develop locally or want to run scripts yourself:
+
+**Merge streaming history** (after adding files to `data/spotify-history/`):
 
 ```bash
-npm run web:build
-npm run web:start
+npm run merge-streaming-history
 ```
 
-**Deploy to Vercel**
+**Generate cleaned files:**
 
-1. Push to GitHub and import the repo in [Vercel](https://vercel.com).
-2. Configure environment variables (Spotify, optional GitHub token for Settings).
-3. The app will be available at your Vercel URL.
+```bash
+npm run generate-cleaned-files
+```
 
-### Step 6: Set Up Automatic Syncing (Optional)
+**Add podcast data to stats:**
 
-The GitHub Action runs every 2 hours and can fetch recent plays, merge data, regenerate cleaned files, add podcast data, commit and push. Vercel redeploys automatically when the repo is updated.
+```bash
+npm run add-podcast-data
+```
 
-1. **GitHub Secrets** (Settings → Secrets and variables → Actions):
+**What runs automatically (GitHub Actions)**
 
-   | Secret | Description |
-   |--------|-------------|
-   | `SPOTIFY_CLIENT_ID` | Spotify app Client ID |
-   | `SPOTIFY_CLIENT_SECRET` | Spotify app Client Secret |
-   | `SPOTIFY_REFRESH_TOKEN` | From `npm run setup-spotify-auth` |
-   | `PERSONAL_ACCESS_TOKEN` | GitHub PAT with `repo` |
-
-2. Enable Actions in the **Actions** tab.
-
-**What runs automatically**
-
-- Every 2 hours: check for new tracks, fetch recent plays, merge with existing history, run `generate-cleaned-files`, run `add-podcast-data`, commit and push. Vercel redeploys when the repo is updated.
+- On push to `data/spotify-history/`: **Merge Streaming History** runs merge → generate-cleaned-files → add-podcast-data and commits.
+- Every 2 hours: **Spotify Data Sync** fetches recent plays, merges, regenerates cleaned data, commits and push. Vercel redeploys when the repo is updated.
 
 ## Web App Overview
 
@@ -234,10 +207,11 @@ After `add-podcast-data`, `detailed-stats-*.json` also includes podcast listenin
 | `SPOTIFY_CLIENT_ID` | Spotify app Client ID | Yes (for sync / metadata / Now Playing) | Scripts, web app API, GitHub Actions |
 | `SPOTIFY_CLIENT_SECRET` | Spotify app Client Secret | Yes (for sync / metadata) | Scripts, GitHub Actions |
 | `SPOTIFY_REFRESH_TOKEN` | Spotify refresh token | Yes (for sync / metadata) | Scripts, GitHub Actions |
-| `GITHUB_TOKEN` | GitHub token (e.g. Actions token or PAT) | No (for Settings sync status) | Web app (sync-status) |
-| `GITHUB_REPO_OWNER` / `GITHUB_REPO_NAME` | Repo for workflow API calls | No (or use Vercel’s `VERCEL_GIT_REPO_OWNER` / `VERCEL_GIT_REPO_SLUG`) | Web app (sync-status) |
+| `GITHUB_TOKEN` | GitHub PAT with `repo` or `contents: write` | Yes (for Settings sync status and in-app upload) | Web app (sync-status, upload-history) |
+| `GITHUB_REPO_OWNER` / `GITHUB_REPO_NAME` | Repo owner and name | No (Vercel sets these when you connect the repo) | Web app (sync-status, upload-history) |
+| `UPLOAD_SECRET` | Secret you enter in Settings to authorize uploads (only you should know it) | Yes (for in-app upload) | Web app (upload-history) |
 
-For GitHub Actions, set Spotify credentials as **repository secrets**. Without Spotify credentials you can still process exported history; automatic sync and metadata enrichment will not work.
+For **GitHub Actions**, set Spotify credentials and `PERSONAL_ACCESS_TOKEN` as **repository secrets**. For the **Vercel** app, set the same Spotify vars plus `GITHUB_TOKEN` and `UPLOAD_SECRET` so the Settings page and in-app upload work. Without Spotify credentials you can still process exported history; automatic sync and metadata enrichment will not work.
 
 ## Troubleshooting
 

@@ -10,6 +10,12 @@ const nextConfig = {
       },
     ],
   },
+  // Keep large packages out of serverless function bundles to stay under Vercel's 250 MB limit
+  serverExternalPackages: [
+    'highcharts',
+    'highcharts-react-official',
+    'cal-heatmap',
+  ],
 }
 
 module.exports = nextConfig
